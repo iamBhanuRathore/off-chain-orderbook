@@ -33,6 +33,7 @@
                     |   Blockchain Node(s)  |
                     +-----------------------+
 
+
 Datastores:
 - Order Database (e.g., PostgreSQL, MySQL) – For pending & historical orders
 - Trade Database (e.g., PostgreSQL, MySQL) – For historical trades
