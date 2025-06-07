@@ -1,0 +1,3 @@
+We are using multiple queue for different Markets:
+ if we recieve an order, we will push it to the queue with the name of the market
+ - Queue Name : orderbook:orders:BTC_INR (Market - BTC/INR)

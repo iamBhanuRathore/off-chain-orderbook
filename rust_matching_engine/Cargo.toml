@@ -5,9 +5,10 @@ edition = "2024"
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
-redis = { version = "0.25", features = ["tokio-comp"] }
-serde = { version = "1.0", features = ["derive","serde"] }
+redis = { version = "0.25", features = ["tokio-comp",'connection-manager'] }
+serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-rust_decimal = "1.37.1"
+rust_decimal = {version = "1.37.1",features = ['serde-str']}
 rust_decimal_macros = "1.37.1"
-uuid = {version = "1.17.0",features = ['v4']}
+uuid = {version = "1.17.0",features = ['v4','serde']}
+chrono = {version = "0.4.41",features = ["serde"]}

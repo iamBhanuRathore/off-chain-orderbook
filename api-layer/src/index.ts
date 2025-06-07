@@ -1,4 +1,3 @@
-// index.ts
 import express, {
   type NextFunction,
   type Request,
@@ -7,9 +6,10 @@ import express, {
 import { createClient } from "redis";
 import type { RedisClientType } from "redis";
 import { v4 as uuidv4 } from "uuid";
+import Markets from "../../markets.json";
 
 const REDIS_URL = process.env.REDIS_URL || "redis://127.0.0.1:6379";
-const ORDERS_QUEUE_BASE = "matching_engine:orders"; // Base name for order queues
+const ORDERS_QUEUE_BASE = "orderbook:orders"; // Base name for order queues
 
 interface OrderPayload {
   id: string;
@@ -64,6 +64,14 @@ app.post("/orders", async (req: Request, res: Response, next: NextFunction) => {
       !body.quantity
     ) {
       res.status(400).json({ error: "Missing required order fields" });
+      return;
+    }
+    if (
+      !Markets.some(
+        (market) => market.symbol === body.trading_pair && market.enabled,
+      )
+    ) {
+      res.status(400).json({ error: "Invalid trading pair" });
       return;
     }
     if (body.side !== "Buy" && body.side !== "Sell") {
