@@ -5,8 +5,6 @@ use serde_json;
 use std::sync::Arc;
 use tokio::sync::Mutex; // Use tokio's Mutex for async code
 
-// Removed: const ORDER_QUEUE_KEY:&str = "order_key";
-
 pub struct OrderConsumer {
     redis_client: redis::aio::ConnectionManager,
     engine: Arc<Mutex<MatchingEngine>>,
@@ -15,12 +13,16 @@ pub struct OrderConsumer {
 
 impl OrderConsumer {
     pub async fn new(
-        cloned_redis_client: redis::aio::ConnectionManager,
+        redis_url: &str,
         engine: Arc<Mutex<MatchingEngine>>,
-        order_queue_key: String, // Pass the queue key
+        order_queue_key: String,
     ) -> Result<Self, redis::RedisError> {
+        // Create a fresh Redis connection for this consumer
+        let redis_client = redis::Client::open(redis_url)?;
+        let connection_manager = redis::aio::ConnectionManager::new(redis_client).await?;
+
         Ok(OrderConsumer {
-            redis_client: cloned_redis_client,
+            redis_client: connection_manager,
             engine,
             order_queue_key,
         })
@@ -31,18 +33,23 @@ impl OrderConsumer {
             "Order consumer started for queue '{}'. Waiting for orders...",
             self.order_queue_key
         );
-        loop {
-          let mut con = self.redis_client.clone();
 
+        loop {
+            println!("[{}] Attempting BRPOP ...", self.order_queue_key);
+
+            // Create a fresh connection for each BRPOP to avoid connection issues
+            let mut con = self.redis_client.clone();
             let result: Result<Option<(String, String)>, redis::RedisError> =
-                con.brpop(&self.order_queue_key, 0.0).await; // Use instance's queue key
+                con.brpop(&self.order_queue_key, 0.0).await; // 5 second timeout instead of 0 (infinite)
 
             match result {
-                Ok(Some((_list_name, order_json))) => {
+                Ok(Some((list_name, order_json))) => {
+                    println!("[{}] BRPOP successful. List: '{}', JSON: '{}'",
+                        self.order_queue_key, list_name, order_json);
+
                     match serde_json::from_str::<Order>(&order_json) {
                         Ok(order) => {
-                            // Optionally log received order:
-                            // println!("[{}] Received order: {:?}", self.order_queue_key, order.id);
+                            println!("[{}] Processing order: {:?}", self.order_queue_key, order.id);
                             let mut engine_guard = self.engine.lock().await;
                             let trades = engine_guard.add_order(order);
                             if !trades.is_empty() {
@@ -56,10 +63,15 @@ impl OrderConsumer {
                                         trade.price,
                                         trade.quantity
                                     );
-                                    // TODO: Publish trades to a Redis channel/list if needed
                                 }
+                            } else {
+                                println!("[{}] Order added to book, no trades generated", self.order_queue_key);
                             }
-                            engine_guard.print_order_book(); // Prints order book for its specific symbol
+
+                            engine_guard.print_order_book();
+                            drop(engine_guard); // Explicitly release the lock
+
+                            println!("[{}] Order processing complete, continuing loop...", self.order_queue_key);
                         }
                         Err(e) => {
                             eprintln!(
@@ -70,16 +82,15 @@ impl OrderConsumer {
                     }
                 }
                 Ok(None) => {
-                    // This case should ideally not happen with BRPOP timeout 0,
-                    // unless connection drops or other rare scenarios.
-                    println!("[{}] BRPOP returned None.", self.order_queue_key);
+                    // Timeout occurred, continue the loop
+                    println!("[{}] BRPOP timeout, checking for more orders...", self.order_queue_key);
                 }
                 Err(e) => {
                     eprintln!(
-                        "[{}] Error receiving order from Redis: {}. Retrying in 1s...",
+                        "[{}] Error receiving order from Redis: {}. Retrying in 2s...",
                         self.order_queue_key, e
                     );
-                    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                    tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
                 }
             }
         }

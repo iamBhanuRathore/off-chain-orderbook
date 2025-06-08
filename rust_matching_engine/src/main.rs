@@ -1,18 +1,14 @@
-
 // main.rs
 mod matching_engine;
 mod consumer;
 
-use matching_engine::{MatchingEngine, OrderSide}; // OrderSide might not be needed directly in main
+use matching_engine::{MatchingEngine};
 use consumer::OrderConsumer;
 
 use serde::Deserialize; // For deserializing the config
 use std::fs;
 use std::sync::Arc;
 use tokio::sync::Mutex; // Ensure using tokio's Mutex for async operations
-// Use these if you want to construct an example order manually in main (not typical for prod)
-// use rust_decimal_macros::dec;
-// use uuid::Uuid;
 
 const REDIS_URL: &str = "redis://127.0.0.1:6379";
 const CONFIG_FILE_PATH: &str = "../markets.json";
@@ -49,19 +45,6 @@ async fn main() {
     };
 
     let mut consumer_handles = Vec::new();
-    let redis_client = match redis::Client::open(REDIS_URL) {
-        Ok(client) => match redis::aio::ConnectionManager::new(client).await {
-            Ok(manager) => manager,
-            Err(e) => {
-                eprintln!("Failed to create async Redis connection manager: {}", e);
-                return;
-            }
-        },
-        Err(e) => {
-            eprintln!("Failed to create Redis client: {}", e);
-            return;
-        }
-    };
 
     for config in trading_pair_configs {
         if !config.enabled {
@@ -80,8 +63,8 @@ async fn main() {
         // Create a dedicated matching engine for this symbol
         let engine = Arc::new(Mutex::new(MatchingEngine::new(config.symbol.clone())));
 
-        // let consumer = match OrderConsumer::new(REDIS_URL, engine, queue_name.clone()).await {
-        let consumer = match OrderConsumer::new(redis_client.clone(), engine, queue_name.clone()).await { // NEW
+        // Create a fresh Redis connection for each consumer
+        let consumer = match OrderConsumer::new(REDIS_URL, engine, queue_name.clone()).await {
             Ok(consumer) => consumer,
             Err(err) => {
                 eprintln!(

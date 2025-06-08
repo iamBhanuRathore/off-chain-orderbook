@@ -1,3 +1,4 @@
+// index.ts
 import express, {
   type NextFunction,
   type Request,
@@ -7,7 +8,7 @@ import { createClient } from "redis";
 import type { RedisClientType } from "redis";
 import { v4 as uuidv4 } from "uuid";
 import Markets from "../../markets.json";
-
+import { z } from "zod";
 const REDIS_URL = process.env.REDIS_URL || "redis://127.0.0.1:6379";
 const ORDERS_QUEUE_BASE = "orderbook:orders"; // Base name for order queues
 
@@ -21,7 +22,13 @@ interface OrderPayload {
   timestamp: string;
   // order_type?: "Limit" | "Market"; // Optional for now
 }
-
+const values = z.object({
+  user_id: z.string(),
+  trading_pair: z.string().min(3).max(10),
+  side: z.enum(["Buy", "Sell"]),
+  price: z.number().min(0),
+  quantity: z.number().min(0),
+});
 let redisClient: RedisClientType;
 
 async function connectRedis(): Promise<RedisClientType> {
@@ -53,28 +60,21 @@ app.get("/health", (req: Request, res: Response) => {
 app.post("/orders", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const body = req.body;
-    console.log("Received order request:", body);
 
-    // --- Basic Validation ---
-    if (
-      !body.user_id ||
-      !body.trading_pair ||
-      !body.side ||
-      !body.price ||
-      !body.quantity
-    ) {
-      res.status(400).json({ error: "Missing required order fields" });
+    const { success, data, error } = values.safeParse(body);
+    if (!success) {
+      res.status(400).json({ error: error });
       return;
     }
     if (
       !Markets.some(
-        (market) => market.symbol === body.trading_pair && market.enabled,
+        (market) => market.symbol === data.trading_pair && market.enabled,
       )
     ) {
       res.status(400).json({ error: "Invalid trading pair" });
       return;
     }
-    if (body.side !== "Buy" && body.side !== "Sell") {
+    if (data.side !== "Buy" && data.side !== "Sell") {
       res.status(400).json({ error: "Invalid order side" });
       return;
     }
@@ -88,11 +88,11 @@ app.post("/orders", async (req: Request, res: Response, next: NextFunction) => {
 
     const orderForEngine: OrderPayload = {
       id: orderId,
-      user_id: parseInt(body.user_id),
-      trading_pair: body.trading_pair.toUpperCase().trim(), // Standardize
-      side: body.side,
-      price: String(body.price), // Ensure string for decimal
-      quantity: String(body.quantity), // Ensure string for decimal
+      user_id: parseInt(data.user_id),
+      trading_pair: data.trading_pair.toUpperCase().trim(), // Standardize
+      side: data.side,
+      price: String(data.price), // Ensure string for decimal
+      quantity: String(data.quantity), // Ensure string for decimal
       timestamp: timestamp,
     };
 
