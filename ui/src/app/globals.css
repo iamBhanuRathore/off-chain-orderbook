@@ -1,0 +1,101 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Light Theme - Borders changed to very dark grey */
+    --background: 0 0% 100%; /* White */
+    --foreground: 240 10% 3.9%; /* Dark grey/black for text */
+
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+
+    --primary: 35 90% 55%; /* Orange/Amber from previous dark theme attempt */
+    --primary-foreground: 0 0% 98%; /* Light text on primary */
+
+    --secondary: 240 4.8% 95.9%; 
+    --secondary-foreground: 240 5.9% 10%;
+
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 13%; /* Very dark grey - ALMOST BLACK for light theme borders */
+    --input: 0 0% 13%; /* Changed to very dark grey for dark input borders */
+    --ring: 35 90% 60%; /* Ring color (Orange/Amber) */
+
+    --radius: 0.5rem;
+
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+
+    --sidebar-background: 0 0% 98%; /* Light sidebar background */
+    --sidebar-foreground: 240 10% 3.9%;
+    --sidebar-primary: 35 90% 55%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 0 0% 13%; /* MATCHING VERY DARK GREY BORDER */
+    --sidebar-ring: 35 90% 60%;
+  }
+
+  .dark {
+    /* Dark Theme based on Backpack Exchange like image - Borders changed to black */
+    --background: 220 15% 10%; /* Very dark desaturated blue */
+    --foreground: 210 20% 85%; /* Light grey for text */
+
+    --card: 220 15% 15%; /* Slightly lighter dark blue/grey for cards */
+    --card-foreground: 210 20% 85%;
+
+    --popover: 220 15% 12%; /* Darker popover */
+    --popover-foreground: 210 20% 85%;
+
+    --primary: 35 90% 55%; /* Orange/Amber for primary actions/highlights */
+    --primary-foreground: 220 15% 10%; /* Dark text on primary */
+    
+    --secondary: 220 10% 30%; 
+    --secondary-foreground: 210 20% 85%;
+
+    --muted: 220 10% 25%; /* Muted grey */
+    --muted-foreground: 210 20% 65%; /* Dimmer text */
+
+    --accent: 140 60% 45%; /* Green for buy */
+    --accent-foreground: 0 0% 98%; 
+
+    --destructive: 0 70% 50%; /* Red for sell */
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 0%; /* BLACK for dark theme borders */
+    --input: 0 0% 0%; /* Changed to black for dark input borders */
+    --ring: 35 90% 60%; /* Brighter Orange/Amber for rings */
+    
+    --sidebar-background: 220 15% 12%;
+    --sidebar-foreground: 210 20% 85%;
+    --sidebar-primary: 35 90% 55%;
+    --sidebar-primary-foreground: 220 15% 10%;
+    --sidebar-accent: 220 10% 20%;
+    --sidebar-accent-foreground: 210 20% 85%;
+    --sidebar-border: 0 0% 0%; /* MATCHING BLACK BORDER */
+    --sidebar-ring: 35 90% 60%;
+  }
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
