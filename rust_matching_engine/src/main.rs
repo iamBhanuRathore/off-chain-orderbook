@@ -57,15 +57,16 @@ async fn main() {
         let ltp_key_name = format!("orderbook:ltp:{}", symbol_key_part);
         let snapshot_key_name = format!("orderbook:snapshot:{}", symbol_key_part);
         let delta_channel_name = format!("orderbook:deltas:{}", symbol_key_part);
-
+        let bids_orderbook_key = format!("orderbook:bids:{}", symbol_key_part);
+        let asks_orderbook_key = format!("orderbook:asks:{}", symbol_key_part);
         println!("Initializing consumer for symbol '{}'...", config.symbol);
         println!(" -> Orders Queue:       {}", order_queue_name);
         println!(" -> Cancel Queue:       {}", cancel_queue_name);
         println!(" -> Trades Stream:      {}", trade_queue_name);
         println!(" -> Snapshot Requests:  {}:requests", snapshot_key_name);
         println!(" -> Deltas Channel:     {}", delta_channel_name);
-        println!(" -> Redis Bids:         orderbook:bids:{}", symbol_key_part);
-        println!(" -> Redis Asks:         orderbook:asks:{}", symbol_key_part);
+        println!(" -> Redis Bids:         {}", bids_orderbook_key);
+        println!(" -> Redis Asks:         {}", asks_orderbook_key);
 
         let engine = Arc::new(Mutex::new(MatchingEngine::new(config.symbol.clone())));
 
@@ -79,6 +80,8 @@ async fn main() {
             ltp_key_name.clone(),
             snapshot_key_name.clone(),
             delta_channel_name.clone(),
+            bids_orderbook_key.clone(),
+            asks_orderbook_key.clone()
         ).await {
             Ok(c) => c,
             Err(e) => {

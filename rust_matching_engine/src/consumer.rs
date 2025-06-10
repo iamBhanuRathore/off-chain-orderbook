@@ -42,6 +42,8 @@ impl OrderConsumer {
         ltp_key: String,
         snapshot_key: String, // We'll use this for snapshot requests
         delta_channel_key: String,
+        bids_orderbook_key:String,
+        asks_orderbook_key:String
     ) -> Result<Self, redis::RedisError> {
         let redis_client = redis::Client::open(redis_url)?;
         let connection_manager = redis::aio::ConnectionManager::new(redis_client).await?;
@@ -49,8 +51,6 @@ impl OrderConsumer {
         // Extract symbol from keys for Redis native storage
         let symbol_part = symbol.clone();
         let snapshot_request_queue_key = format!("{}:requests", snapshot_key);
-        let bids_orderbook_key = format!("orderbook:bids:{}", symbol_part);
-        let asks_orderbook_key = format!("orderbook:asks:{}", symbol_part);
 
         Ok(OrderConsumer {
             redis_client: connection_manager,
