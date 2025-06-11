@@ -49,17 +49,29 @@ export const getOrderBook = async (symbol: string): Promise<{bids: OrderBookLeve
     const asksKey = keys.getAsksKey(symbol);
 
     const parseLevels = (levels: string[]): OrderBookLevel[] => {
-        return levels.map(levelStr => {
-            const [ price = "", quantity = "" ] = levelStr.split(':');
-            return { price, quantity };
+        const priceMap = new Map<string, string>();
+        
+        levels.forEach(levelStr => {
+            const [price = "", quantity = ""] = levelStr.split(':');
+            if (price && quantity) {
+                const currentQty = priceMap.get(price);
+                if (!currentQty || parseFloat(quantity) > parseFloat(currentQty)) {
+                    priceMap.set(price, quantity);
+                }
+            }
         });
+
+        return Array.from(priceMap.entries()).map(([price, quantity]) => ({
+            price,
+            quantity
+        }));
     };
     
     const [bidLevels, askLevels] = await Promise.all([
         redisClient.zRange(bidsKey, 0, 49, { REV: true }),
         redisClient.zRange(asksKey, 0, 49)
     ]);
-
+    console.log(bidLevels, askLevels);
     return {
         bids: parseLevels(bidLevels),
         asks: parseLevels(askLevels),
