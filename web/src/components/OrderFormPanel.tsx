@@ -120,11 +120,11 @@ export function OrderFormPanel({ selectedSymbol, userAvailableBase, userAvailabl
 
       <CardContent className="p-2 flex-grow flex flex-col space-y-1">
         <Tabs value={activeInnerTab} onValueChange={(value) => setActiveInnerTab(value as "limit" | "market")} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 h-7 bg-muted p-1 text-muted-foreground rounded-md">
-            <TabsTrigger value="limit" className="text-xs py-1 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+          <TabsList className="grid w-full grid-cols-2 bg-muted p-1 text-muted-foreground rounded-md">
+            <TabsTrigger value="limit" className="text-xs data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
               Limit
             </TabsTrigger>
-            <TabsTrigger value="market" className="text-xs py-1 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+            <TabsTrigger value="market" className="text-xs data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
               Market
             </TabsTrigger>
           </TabsList>
