@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { type z } from "zod";
 import { useForm } from "react-hook-form";
 import * as React from "react";
 import { motion } from "framer-motion";
@@ -11,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OrderFormSchema } from "@/lib/schemas";
-import type { OrderFormData, TradingSymbol } from "@/types";
+import type { TradingSymbol } from "@/types"; // OrderFormData will be inferred
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Bitcoin, DollarSign } from "lucide-react";
@@ -22,12 +23,15 @@ interface OrderFormPanelProps {
   userAvailableQuote: number;
 }
 
+// Infer the form data type directly from the Zod schema
+type OrderFormValues = z.infer<typeof OrderFormSchema>;
+
 export function OrderFormPanel({ selectedSymbol, userAvailableBase, userAvailableQuote }: OrderFormPanelProps) {
   const { toast } = useToast();
   const [activeOuterTab, setActiveOuterTab] = React.useState<"buy" | "sell">("buy");
   const [activeInnerTab, setActiveInnerTab] = React.useState<"limit" | "market">("limit");
 
-  const form = useForm<OrderFormData>({
+  const form = useForm<OrderFormValues>({
     resolver: zodResolver(OrderFormSchema),
     defaultValues: {
       symbol: selectedSymbol,
@@ -35,6 +39,8 @@ export function OrderFormPanel({ selectedSymbol, userAvailableBase, userAvailabl
       type: activeInnerTab,
       price: undefined,
       amount: undefined,
+      // Ensure defaultValues are compatible with OrderFormValues.
+      // Zod's `infer` type will dictate if fields are optional or required.
     },
   });
 
@@ -45,6 +51,8 @@ export function OrderFormPanel({ selectedSymbol, userAvailableBase, userAvailabl
       type: activeInnerTab,
       price: form.getValues("type") === "market" ? undefined : form.getValues("price"),
       amount: undefined,
+      // Zod schema might make `amount` required in the output.
+      // `undefined` is acceptable here due to `reset` taking Partial.
     });
   }, [selectedSymbol, activeOuterTab, activeInnerTab, form]);
 
@@ -57,15 +65,15 @@ export function OrderFormPanel({ selectedSymbol, userAvailableBase, userAvailabl
     return price * amount;
   }, [activeInnerTab, price, amount]);
 
-  function onSubmit(data: OrderFormData) {
+  function onSubmit(data: OrderFormValues) {
     const finalData = { ...data, type: activeInnerTab };
     if (finalData.type === "market") {
       delete finalData.price;
     }
     toast({
       title: "Order Submitted",
-      description: `Your ${finalData.side.toUpperCase()} ${finalData.type.toUpperCase()} order for ${finalData.amount} ${finalData.symbol.split("/")[0]} has been submitted.`,
-      variant: "default",
+      description: `Your ${finalData.side.toUpperCase()} ${finalData.type.toUpperCase()} order for ${finalData.amount} ${finalData.symbol.quote_asset} has been submitted.`,
+      variant: "default", // Assuming quote_asset is correct, schema output might differ for symbol
     });
     console.log("Order data:", finalData);
 
@@ -75,13 +83,13 @@ export function OrderFormPanel({ selectedSymbol, userAvailableBase, userAvailabl
       if (isSuccessful) {
         toast({
           title: "🎉 Order Fulfilled!",
-          description: `Your ${finalData.side.toUpperCase()} order for ${finalData.amount} ${finalData.symbol.split("/")[0]} fulfilled.`,
+          description: `Your ${finalData.side.toUpperCase()} order for ${finalData.amount} ${finalData.symbol.base_asset} fulfilled.`, // Typically amount is in base_asset
           variant: "default",
         });
       } else {
         toast({
           title: "Order Failed",
-          description: `Your ${finalData.side.toUpperCase()} order for ${finalData.amount} ${finalData.symbol.split("/")[0]} could not be fulfilled.`,
+          description: `Your ${finalData.side.toUpperCase()} order for ${finalData.amount} ${finalData.symbol.base_asset} could not be fulfilled.`,
           variant: "destructive",
         });
       }
@@ -95,10 +103,7 @@ export function OrderFormPanel({ selectedSymbol, userAvailableBase, userAvailabl
       amount: undefined,
     });
   }
-
-  const currentAsset = selectedSymbol.split("/");
-  const baseAsset = currentAsset[0];
-  const quoteAsset = currentAsset[1];
+  const [baseAsset, quoteAsset] = [selectedSymbol.base_asset, selectedSymbol.quote_asset];
 
   const availableEquity = activeOuterTab === "buy" ? userAvailableQuote : userAvailableBase;
   const equityAsset = activeOuterTab === "buy" ? quoteAsset : baseAsset;

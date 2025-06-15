@@ -1,0 +1,37 @@
+[
+  {
+    "symbol": "BTC/INR",
+    "base_asset": "BTC",
+    "quote_asset": "INR",
+    "enabled": true,
+    "description": "Bitcoin to Indian Rupee"
+  },
+  {
+    "symbol": "ETH/USD",
+    "base_asset": "ETH",
+    "quote_asset": "USD",
+    "enabled": true,
+    "description": "Ethereum to US Dollar"
+  },
+  {
+    "symbol": "LTC/BTC",
+    "base_asset": "LTC",
+    "quote_asset": "BTC",
+    "enabled": true,
+    "description": "Litecoin to Bitcoin"
+  },
+  {
+    "symbol": "SOL/USDT",
+    "base_asset": "SOL",
+    "quote_asset": "USDT",
+    "enabled": true,
+    "description": "Solana to Tether USD"
+  },
+  {
+    "symbol": "SOL/USDC",
+    "base_asset": "SOL",
+    "quote_asset": "USDC",
+    "enabled": true,
+    "description": "Solana to USD Coin"
+  }
+]

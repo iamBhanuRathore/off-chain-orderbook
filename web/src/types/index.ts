@@ -1,4 +1,10 @@
-export type TradingSymbol = "BTC/USD" | "ETH/USD" | "SOL/USD";
+export type TradingSymbol = {
+  symbol: string;
+  base_asset: string;
+  quote_asset: string;
+  enabled: boolean;
+  description: string;
+};
 
 export interface OrderBookEntry {
   price: number;
@@ -25,7 +31,7 @@ export interface BalanceEntry {
 export interface OpenOrderEntry {
   id: string;
   date: string; // ISO string or formatted
-  pair: TradingSymbol;
+  pair: string; // e.g., "BTC/USD"
   type: "Limit" | "Market";
   side: "Buy" | "Sell";
   price: number;
@@ -36,7 +42,7 @@ export interface OpenOrderEntry {
 }
 
 export interface OrderHistoryEntry extends OpenOrderEntry {
- status: "Filled" | "Cancelled" | "Partially Filled & Cancelled";
+  status: "Filled" | "Cancelled" | "Partially Filled & Cancelled";
 }
 
 export type OrderFormData = {
