@@ -1,7 +1,6 @@
 import type { TradingSymbol, OrderBookEntry, TradeEntry, BalanceEntry, OpenOrderEntry, OrderHistoryEntry } from "@/types";
 import rawMarkets from "../../public/markets.json" assert { type: "json" };
 export const AVAILABLE_SYMBOLS: TradingSymbol[] = rawMarkets as TradingSymbol[];
-
 export const MOCK_ORDER_BOOK_BIDS: OrderBookEntry[] = [
   { price: 40000, quantity: 0.5, total: 20000, depth: 100 },
   { price: 39990, quantity: 1.2, total: 47988, depth: 80 },
