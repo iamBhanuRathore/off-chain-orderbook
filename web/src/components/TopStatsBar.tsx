@@ -1,10 +1,8 @@
-
 "use client";
 import * as React from "react";
 import { MarketSelector } from "./MarketSelector";
-import type { TradingSymbol } from "@/types";
-import { AVAILABLE_SYMBOLS } from "@/lib/constants";
-import { ChevronDown, TrendingUp, Zap } from "lucide-react"; // Added icons
+import { Zap } from "lucide-react"; // Added icons
+import { useSelectedMarket } from "./providers/market-context";
 
 interface StatItemProps {
   label: string;
@@ -21,10 +19,8 @@ const StatItem: React.FC<StatItemProps> = ({ label, value, valueColor = "text-fo
   </div>
 );
 
-
 export function TopStatsBar() {
-  const [selectedSymbol, setSelectedSymbol] = React.useState<TradingSymbol>(AVAILABLE_SYMBOLS[0]);
-
+  const { selectedSymbol } = useSelectedMarket();
   // Mock data based on the image
   const mockPrice = "105,889.9";
   const mockIndexPrice = "105,909.1";
@@ -38,31 +34,46 @@ export function TopStatsBar() {
   const mockOpenInterest = "589.39990 BTC";
   const mockProfitAPY = "4.76%";
 
-
   return (
     <div className="bg-card border-b border-border p-3 flex items-center gap-4 overflow-x-auto">
-      <MarketSelector selectedSymbol={selectedSymbol} onSymbolChange={setSelectedSymbol} />
-      
+      <MarketSelector />
+
       <div className="h-8 border-l border-border mx-2"></div>
 
       <StatItem label="Last Price" value={mockPrice} valueColor="text-primary" className="min-w-[100px]" />
       <StatItem label="Index Price" value={mockIndexPrice} className="min-w-[100px]" />
-      
+
       <div className="h-8 border-l border-border mx-2"></div>
 
-      <StatItem label="24H Change" value={<span className="text-green-500">{mock24hChangeValue} ({mock24hChangePercent})</span>} className="min-w-[120px]" />
-      <StatItem 
-        label="Funding / Countdown" 
-        value={<>{mockFundingRate} / <span className="text-muted-foreground">{mockFundingCountdown}</span></>}
+      <StatItem
+        label="24H Change"
+        value={
+          <span className="text-green-500">
+            {mock24hChangeValue} ({mock24hChangePercent})
+          </span>
+        }
+        className="min-w-[120px]"
+      />
+      <StatItem
+        label="Funding / Countdown"
+        value={
+          <>
+            {mockFundingRate} / <span className="text-muted-foreground">{mockFundingCountdown}</span>
+          </>
+        }
         className="min-w-[180px]"
       />
       <StatItem label="24H High" value={mock24hHigh} className="min-w-[100px]" />
       <StatItem label="24H Low" value={mock24hLow} className="min-w-[100px]" />
       <StatItem label="24H Volume" value={mock24hVolume} className="min-w-[180px]" />
       <StatItem label="Open Interest" value={mockOpenInterest} className="min-w-[150px]" />
-      <StatItem 
-        label="Profit APY" 
-        value={<span className="flex items-center text-green-400">{mockProfitAPY} <Zap size={14} className="ml-1" /></span>} 
+      <StatItem
+        label="Profit APY"
+        value={
+          <span className="flex items-center text-green-400">
+            {mockProfitAPY} <Zap size={14} className="ml-1" />
+          </span>
+        }
         className="min-w-[100px]"
       />
     </div>

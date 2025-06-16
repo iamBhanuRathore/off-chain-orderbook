@@ -3,12 +3,16 @@ import express from "express";
 import cors from "cors";
 import { randomUUID } from "crypto";
 import { Redis } from "ioredis";
+import { readFileSync } from "fs";
+import path from "path";
+import type { ServerWebSocket } from "bun";
 
 interface TradingPair {
   symbol: string;
   base_asset: string;
   quote_asset: string;
   enabled: boolean;
+  description: string;
 }
 
 interface OrderData {
@@ -56,7 +60,7 @@ class TradingWebSocketServer {
   private redisSubscriber: Redis;
   private userSubscriptions: Map<string, Set<string>> = new Map();
   private channelSubscribers: Map<string, Set<string>> = new Map();
-  private websockets: Map<string, any> = new Map();
+  private websockets: Map<string, ServerWebSocket<any>> = new Map();
   private tradingPairs: TradingPair[];
 
   constructor() {
@@ -100,26 +104,9 @@ class TradingWebSocketServer {
   }
 
   private loadTradingPairs(): TradingPair[] {
-    return [
-      {
-        symbol: "BTC_INR",
-        base_asset: "BTC",
-        quote_asset: "INR",
-        enabled: true,
-      },
-      {
-        symbol: "ETH_INR",
-        base_asset: "ETH",
-        quote_asset: "INR",
-        enabled: true,
-      },
-      {
-        symbol: "BTC_USDT",
-        base_asset: "BTC",
-        quote_asset: "USDT",
-        enabled: true,
-      },
-    ].filter((pair) => pair.enabled);
+    const rawPairs = readFileSync(path.resolve(__dirname, "../../markets.json"), "utf-8");
+    const pairs = JSON.parse(rawPairs);
+    return pairs.filter((pair: TradingPair) => pair.enabled);
   }
 
   private setupMiddleware(): void {
@@ -201,7 +188,6 @@ class TradingWebSocketServer {
   private async handlePlaceOrder(ws: any, data: OrderData): Promise<void> {
     try {
       const { symbol, user_id, order_type, side, price, quantity } = data;
-
       if (!symbol || !user_id || !order_type || !side || !quantity) {
         throw new Error("Missing required order parameters");
       }
@@ -423,12 +409,15 @@ class TradingWebSocketServer {
       const bids: OrderbookLevel[] = [];
       for (let i = 0; i < bidsData.length; i += 2) {
         if (typeof bidsData[i] === "string") {
+          // @ts-ignore
           const [price, quantity] = bidsData[i].split(":");
-          bids.push({
-            price: parseFloat(price),
-            quantity: parseFloat(quantity),
-            score: parseFloat(bidsData[i + 1] as string),
-          });
+          if (price && quantity) {
+            bids.push({
+              price: parseFloat(price),
+              quantity: parseFloat(quantity),
+              score: parseFloat(bidsData[i + 1] as string),
+            });
+          }
         }
       }
 
@@ -437,12 +426,15 @@ class TradingWebSocketServer {
       const asks: OrderbookLevel[] = [];
       for (let i = 0; i < asksData.length; i += 2) {
         if (typeof asksData[i] === "string") {
-          const [price, quantity] = asksData[i].split(":");
-          asks.push({
-            price: parseFloat(price),
-            quantity: parseFloat(quantity),
-            score: parseFloat(asksData[i + 1] as string),
-          });
+          // @ts-ignore
+          const [price = "", quantity = ""] = asksData[i].split(":");
+          if (price && quantity) {
+            asks.push({
+              price: parseFloat(price),
+              quantity: parseFloat(quantity),
+              score: parseFloat(asksData[i + 1] as string),
+            });
+          }
         }
       }
 
@@ -464,8 +456,8 @@ class TradingWebSocketServer {
     // Subscribe to all delta and trade channels for enabled trading pairs
     const channels: string[] = [];
     this.tradingPairs.forEach((pair) => {
-      channels.push(`orderbook:deltas:${pair.symbol}`);
-      channels.push(`orderbook:trades:${pair.symbol}`);
+      channels.push(`orderbook:deltas:${pair.base_asset}:${pair.quote_asset}`);
+      channels.push(`orderbook:trades:${pair.base_asset}:${pair.quote_asset}`);
     });
 
     if (channels.length > 0) {
@@ -602,10 +594,10 @@ class TradingWebSocketServer {
           console.log(`Client disconnected: ${wsId}`);
           this.cleanupUserSubscriptions(wsId);
         },
-        error: (ws, error) => {
-          const wsId = (ws as any).id;
-          console.error(`WebSocket error for client ${wsId}:`, error);
-        },
+        // error: (ws, error) => {
+        //   const wsId = (ws as any).id;
+        //   console.error(`WebSocket error for client ${wsId}:`, error);
+        // },
       },
     });
 
@@ -615,8 +607,8 @@ class TradingWebSocketServer {
 
   public async shutdown(): Promise<void> {
     console.log("Shutting down server...");
-    await this.redisPublisher.disconnect();
-    await this.redisSubscriber.disconnect();
+    await this.redisPublisher.quit();
+    await this.redisSubscriber.quit();
     if (this.server) {
       this.server.stop();
     }
@@ -625,8 +617,7 @@ class TradingWebSocketServer {
 
 // Initialize and start server
 const server = new TradingWebSocketServer();
-server.start(3000);
-
+server.start(4000);
 // Graceful shutdown
 process.on("SIGINT", async () => {
   console.log("\nReceived SIGINT, shutting down gracefully...");
