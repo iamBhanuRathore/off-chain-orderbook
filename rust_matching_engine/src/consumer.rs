@@ -89,27 +89,19 @@ impl OrderConsumer {
                 OrderSide::Buy => &self.bids_orderbook_key,
                 OrderSide::Sell => &self.asks_orderbook_key,
             };
-
+            let score = if delta.side == OrderSide::Buy {
+                       -delta.price.to_f64().unwrap_or(0.0)
+                   } else {
+                       delta.price.to_f64().unwrap_or(0.0)
+                   };
+            let _: Result<i32, _> = con.zrembyscore(key, score, score).await;
             match delta.action {
                 DeltaAction::Delete => {
-                    // Remove the price level entirely
-                    let _: Result<i32, _> = con.zrem(key, delta.price.to_string()).await;
+                  // Nothing more to do - entry already removed
                 }
                 DeltaAction::New | DeltaAction::Update => {
-                    // Add or update the price level with new quantity
                     // Score is the price (for sorting), member is price:quantity
                     let member = format!("{}:{}", delta.price, delta.new_quantity);
-                    let score = if delta.side == OrderSide::Buy {
-                        // For bids, we want highest price first, so use negative score
-                        -delta.price.to_f64().unwrap_or(0.0)
-                    } else {
-                        // For asks, we want lowest price first, so use positive score
-                        delta.price.to_f64().unwrap_or(0.0)
-                    };
-
-                    // Remove old entry first (in case price exists with different quantity)
-                    let _: Result<i32, _> = con.zrem(key, delta.price.to_string()).await;
-
                     // Add new entry
                     let _: Result<i32, _> = con.zadd(key, member, score).await;
                 }

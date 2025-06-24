@@ -4,7 +4,7 @@ import cors from "cors";
 import { randomUUID } from "crypto";
 import { Redis } from "ioredis";
 import { readFileSync } from "fs";
-import path from "path";
+import path, { join } from "path";
 import type { ServerWebSocket } from "bun";
 
 interface TradingPair {
@@ -187,7 +187,7 @@ class TradingWebSocketServer {
 
   private async handlePlaceOrder(ws: any, data: OrderData): Promise<void> {
     try {
-      const { symbol, user_id, order_type, side, price, quantity } = data;
+      let { symbol, user_id, order_type, side, price, quantity } = data;
       if (!symbol || !user_id || !order_type || !side || !quantity) {
         throw new Error("Missing required order parameters");
       }
@@ -195,6 +195,7 @@ class TradingWebSocketServer {
       if (!this.tradingPairs.find((pair) => pair.symbol === symbol)) {
         throw new Error(`Invalid trading pair: ${symbol}`);
       }
+      symbol = symbol.split("/").join("_");
 
       const order = {
         command: "NewOrder",
@@ -226,7 +227,7 @@ class TradingWebSocketServer {
 
   private async handleCancelOrder(ws: any, data: CancelOrderData): Promise<void> {
     try {
-      const { symbol, order_id } = data;
+      let { symbol, order_id } = data;
 
       if (!symbol || !order_id) {
         throw new Error("Missing symbol or order_id");
@@ -235,7 +236,7 @@ class TradingWebSocketServer {
       if (!this.tradingPairs.find((pair) => pair.symbol === symbol)) {
         throw new Error(`Invalid trading pair: ${symbol}`);
       }
-
+      symbol = symbol.split("/").join("_");
       const cancelCommand = {
         command: "CancelOrder",
         payload: {
@@ -259,8 +260,7 @@ class TradingWebSocketServer {
 
   private handleOrderbookSubscription(ws: any, data: SubscriptionData): void {
     try {
-      const { symbol } = data;
-
+      let { symbol } = data;
       if (!symbol) {
         throw new Error("Symbol is required for subscription");
       }
@@ -268,7 +268,7 @@ class TradingWebSocketServer {
       if (!this.tradingPairs.find((pair) => pair.symbol === symbol)) {
         throw new Error(`Invalid trading pair: ${symbol}`);
       }
-
+      symbol = symbol.split("/").join("_");
       const deltaChannel = `orderbook:deltas:${symbol}`;
       const tradeChannel = `orderbook:trades:${symbol}`;
 
@@ -302,12 +302,12 @@ class TradingWebSocketServer {
 
   private handleOrderbookUnsubscription(ws: any, data: SubscriptionData): void {
     try {
-      const { symbol } = data;
+      let { symbol } = data;
 
       if (!symbol) {
         throw new Error("Symbol is required for unsubscription");
       }
-
+      symbol = symbol.split("/").join("_");
       const deltaChannel = `orderbook:deltas:${symbol}`;
       const tradeChannel = `orderbook:trades:${symbol}`;
 
@@ -336,8 +336,7 @@ class TradingWebSocketServer {
 
   private async handleSnapshotRequest(ws: any, data: SnapshotData): Promise<void> {
     try {
-      const { symbol } = data;
-
+      let { symbol } = data;
       if (!symbol) {
         throw new Error("Symbol is required for snapshot");
       }
@@ -345,6 +344,8 @@ class TradingWebSocketServer {
       if (!this.tradingPairs.find((pair) => pair.symbol === symbol)) {
         throw new Error(`Invalid trading pair: ${symbol}`);
       }
+      // this symbol our matching engine supports
+      symbol = symbol.split("/").join("_");
 
       const responseChannel = `snapshot_${ws.id}_${Date.now()}`;
 
@@ -354,8 +355,14 @@ class TradingWebSocketServer {
         port: 6379,
       });
 
-      tempSubscriber.subscribe(responseChannel);
-      tempSubscriber.on("message", (channel: string, message: string) => {
+      await tempSubscriber.subscribe(responseChannel);
+      // to remove the connection if the matching engine does not give response
+      let timeout = setTimeout(async () => {
+        await tempSubscriber.unsubscribe(responseChannel);
+        tempSubscriber.disconnect();
+        this.sendError(ws, "snapshot_timeout", "Snapshot request timed out");
+      }, 3 * 1000);
+      tempSubscriber.on("message", async (channel: string, message: string) => {
         if (channel === responseChannel) {
           try {
             const snapshot = JSON.parse(message);
@@ -366,7 +373,8 @@ class TradingWebSocketServer {
           } catch (error) {
             this.sendError(ws, "snapshot_parse_error", "Failed to parse snapshot data");
           }
-          tempSubscriber.unsubscribe(responseChannel);
+          clearTimeout(timeout);
+          await tempSubscriber.unsubscribe(responseChannel);
           tempSubscriber.disconnect();
         }
       });
@@ -378,7 +386,6 @@ class TradingWebSocketServer {
           response_channel: responseChannel,
         },
       };
-
       const queueKey = `orderbook:snapshot:${symbol}:requests`;
       await this.redisPublisher.lpush(queueKey, JSON.stringify(snapshotRequest));
 
@@ -390,7 +397,7 @@ class TradingWebSocketServer {
 
   private async handleGetRedisOrderbook(ws: any, data: RedisOrderbookData): Promise<void> {
     try {
-      const { symbol, limit = 10 } = data;
+      let { symbol, limit = 10 } = data;
 
       if (!symbol) {
         throw new Error("Symbol is required");
@@ -399,13 +406,14 @@ class TradingWebSocketServer {
       if (!this.tradingPairs.find((pair) => pair.symbol === symbol)) {
         throw new Error(`Invalid trading pair: ${symbol}`);
       }
-
+      symbol = symbol.split("/").join("_");
       const bidsKey = `orderbook:bids:${symbol}`;
       const asksKey = `orderbook:asks:${symbol}`;
       const ltpKey = `orderbook:ltp:${symbol}`;
 
       // Get bids (highest first)
       const bidsData = await this.redisPublisher.zrevrange(bidsKey, 0, limit - 1, "WITHSCORES");
+      console.log(bidsData);
       const bids: OrderbookLevel[] = [];
       for (let i = 0; i < bidsData.length; i += 2) {
         if (typeof bidsData[i] === "string") {
@@ -423,6 +431,7 @@ class TradingWebSocketServer {
 
       // Get asks (lowest first)
       const asksData = await this.redisPublisher.zrange(asksKey, 0, limit - 1, "WITHSCORES");
+      console.log(asksData);
       const asks: OrderbookLevel[] = [];
       for (let i = 0; i < asksData.length; i += 2) {
         if (typeof asksData[i] === "string") {
@@ -456,8 +465,8 @@ class TradingWebSocketServer {
     // Subscribe to all delta and trade channels for enabled trading pairs
     const channels: string[] = [];
     this.tradingPairs.forEach((pair) => {
-      channels.push(`orderbook:deltas:${pair.base_asset}:${pair.quote_asset}`);
-      channels.push(`orderbook:trades:${pair.base_asset}:${pair.quote_asset}`);
+      channels.push(`orderbook:deltas:${pair.base_asset}_${pair.quote_asset}`);
+      channels.push(`orderbook:trades:${pair.base_asset}_${pair.quote_asset}`);
     });
 
     if (channels.length > 0) {
@@ -632,3 +641,18 @@ process.on("SIGTERM", async () => {
 });
 
 export default TradingWebSocketServer;
+
+let a = {
+  symbol: "BTC/INR",
+  bids: [
+    { price: "50030", quantity: "5" },
+    { price: "50005", quantity: "20" },
+    { price: "50000", quantity: "20" },
+  ],
+  asks: [
+    { price: "50100", quantity: "15" },
+    { price: "50200", quantity: "20" },
+  ],
+  last_traded_price: "50100",
+  timestamp: "2025-06-17T20:53:03.197055Z",
+};

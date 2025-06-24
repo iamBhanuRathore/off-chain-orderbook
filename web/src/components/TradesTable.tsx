@@ -1,12 +1,4 @@
-
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { TradeEntry } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -28,9 +20,7 @@ export function TradesTable({ data }: TradesTableProps) {
         <TableBody>
           {data.map((trade) => (
             <TableRow key={trade.id} className="hover:bg-muted/10 border-none">
-              <TableCell className={cn("py-0.5 px-2 font-mono", trade.side === "buy" ? "text-green-500" : "text-destructive")}>
-                {trade.price.toFixed(1)}
-              </TableCell>
+              <TableCell className={cn("py-0.5 px-2 font-mono", trade.side === "Buy" ? "text-green-500" : "text-destructive")}>{trade.price.toFixed(1)}</TableCell>
               <TableCell className="py-0.5 px-2 text-right tabular-nums font-mono text-foreground/90">{trade.quantity.toFixed(5)}</TableCell>
               <TableCell className="py-0.5 px-2 text-right text-muted-foreground tabular-nums font-mono">{trade.time}</TableCell>
             </TableRow>

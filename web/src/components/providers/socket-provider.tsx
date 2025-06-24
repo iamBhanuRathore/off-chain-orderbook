@@ -1,17 +1,23 @@
 "use client";
 
-import React from "react";
+import React, { useCallback, useRef } from "react";
 import { createContext, useContext, useEffect, useState } from "react";
 // import { io as ClientIO } from "socket.io-client";
 
 type SocketProviderType = {
-  socket: any | null;
+  socket: WebSocket | null;
   isConnected: boolean;
+  isConnecting: boolean;
+  connect: () => void;
+  disconnect: () => void;
 };
 
 const SocketContext = createContext<SocketProviderType>({
   socket: null,
   isConnected: false,
+  isConnecting: false,
+  connect: () => {},
+  disconnect: () => {},
 });
 
 export const useSocket = () => {
@@ -20,37 +26,83 @@ export const useSocket = () => {
 
 export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   const [socket, setSocket] = useState<WebSocket | null>(null);
-  const [isConnected, setisConnected] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | number>(0);
+  const reconnectAttempts = useRef(0);
+  const maxReconnectAttempts = 5;
+
+  const connect = useCallback(() => {
+    if (isConnecting || (socket && socket.readyState === WebSocket.OPEN)) {
+      return;
+    }
+
+    setIsConnecting(true);
+
+    try {
+      const ws = new WebSocket("ws://localhost:4000"); // Adjust URL as needed
+
+      ws.onopen = () => {
+        console.log("WebSocket connected");
+        setIsConnected(true);
+        setIsConnecting(false);
+        reconnectAttempts.current = 0;
+      };
+
+      ws.onclose = (event) => {
+        console.log("WebSocket disconnected:", event.code, event.reason);
+        setIsConnected(false);
+        setIsConnecting(false);
+        setSocket(null);
+
+        // Auto-reconnect logic
+        if (reconnectAttempts.current < maxReconnectAttempts) {
+          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
+          console.log(`Reconnecting in ${delay}ms (attempt ${reconnectAttempts.current + 1})`);
+
+          reconnectTimeoutRef.current = setTimeout(() => {
+            reconnectAttempts.current++;
+            connect();
+          }, delay);
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error("WebSocket error:", error);
+        setIsConnecting(false);
+      };
+
+      setSocket(ws);
+    } catch (error) {
+      console.error("Failed to create WebSocket connection:", error);
+      setIsConnecting(false);
+    }
+  }, [isConnecting, socket]);
+
   useEffect(() => {
-    const socketInstance = new WebSocket(process.env.SOCKET_SERVER_URL!);
-    socketInstance.onopen = () => {
-      setisConnected(true);
-    };
-    socketInstance.onclose = () => {
-      setisConnected(false);
-    };
-    socketInstance.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      console.log("Received message:", data);
-    };
-    socketInstance.onerror = (error) => {
-      console.error("WebSocket error:", error);
-    };
-    setSocket(socketInstance);
-    // const socketInstance = new io(process.env.NEXT_PUBLIC_SITE_URL!, {
-    //   path: "/api/socket/io",
-    //   addTrailingSlash: false,
-    // });
-    // socketInstance.on("connect", () => {
-    //   setisConnected(true);
-    // });
-    // socketInstance.on("disconnect", () => {
-    //   setisConnected(false);
-    // });
-    // setSocket(socketInstance);
+    connect();
+
     return () => {
-      socketInstance.close();
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (socket) {
+        socket.close();
+      }
     };
   }, []);
-  return <SocketContext.Provider value={{ socket, isConnected }}>{children}</SocketContext.Provider>;
+
+  const disconnect = useCallback(() => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+    }
+    if (socket) {
+      socket.close();
+    }
+    setSocket(null);
+    setIsConnected(false);
+  }, [socket]);
+
+  // return { socket, isConnected, isConnecting, connect, disconnect };
+  return <SocketContext.Provider value={{ socket, isConnected, isConnecting, connect, disconnect }}>{children}</SocketContext.Provider>;
 };

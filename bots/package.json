@@ -4,7 +4,9 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "bun run src/index.ts"
+    "dev": "bun run src/index.ts",
+    "buyer": "bun run src/bots/buyer-bot.ts",
+    "seller": "bun run src/bots/seller-bot.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",

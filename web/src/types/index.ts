@@ -18,7 +18,7 @@ export interface TradeEntry {
   price: number;
   quantity: number;
   time: string; // ISO string or formatted
-  side: "buy" | "sell";
+  side: "Buy" | "Sell";
 }
 
 export interface BalanceEntry {
@@ -47,7 +47,7 @@ export interface OrderHistoryEntry extends OpenOrderEntry {
 
 export type OrderFormData = {
   symbol: TradingSymbol;
-  side: "buy" | "sell";
+  side: "Buy" | "Sell";
   type: "limit" | "market";
   price?: number;
   amount: number;

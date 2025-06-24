@@ -28,7 +28,7 @@ type OrderFormValues = z.infer<typeof OrderFormSchema>;
 
 export function OrderFormPanel({ selectedSymbol, userAvailableBase, userAvailableQuote }: OrderFormPanelProps) {
   const { toast } = useToast();
-  const [activeOuterTab, setActiveOuterTab] = React.useState<"buy" | "sell">("buy");
+  const [activeOuterTab, setActiveOuterTab] = React.useState<"Buy" | "Sell">("Buy");
   const [activeInnerTab, setActiveInnerTab] = React.useState<"limit" | "market">("limit");
 
   const form = useForm<OrderFormValues>({
@@ -105,18 +105,18 @@ export function OrderFormPanel({ selectedSymbol, userAvailableBase, userAvailabl
   }
   const [baseAsset, quoteAsset] = [selectedSymbol.base_asset, selectedSymbol.quote_asset];
 
-  const availableEquity = activeOuterTab === "buy" ? userAvailableQuote : userAvailableBase;
-  const equityAsset = activeOuterTab === "buy" ? quoteAsset : baseAsset;
+  const availableEquity = activeOuterTab === "Buy" ? userAvailableQuote : userAvailableBase;
+  const equityAsset = activeOuterTab === "Buy" ? quoteAsset : baseAsset;
 
   return (
     <Card className="w-full h-full flex flex-col bg-card text-foreground">
-      <Tabs value={activeOuterTab} onValueChange={(value) => setActiveOuterTab(value as "buy" | "sell")} className="w-full">
+      <Tabs value={activeOuterTab} onValueChange={(value) => setActiveOuterTab(value as "Buy" | "Sell")} className="w-full">
         <CardHeader className="p-0">
           <TabsList className="grid w-full grid-cols-2 rounded-none h-10">
-            <TabsTrigger value="buy" className="text-sm rounded-none data-[state=active]:bg-green-600/80 data-[state=active]:text-white data-[state=active]:shadow-none">
+            <TabsTrigger value="Buy" className="text-sm rounded-none data-[state=active]:bg-green-600/80 data-[state=active]:text-white data-[state=active]:shadow-none">
               Buy / Long
             </TabsTrigger>
-            <TabsTrigger value="sell" className="text-sm rounded-none data-[state=active]:bg-destructive/80 data-[state=active]:text-white data-[state=active]:shadow-none">
+            <TabsTrigger value="Sell" className="text-sm rounded-none data-[state=active]:bg-destructive/80 data-[state=active]:text-white data-[state=active]:shadow-none">
               Sell / Short
             </TabsTrigger>
           </TabsList>
@@ -134,7 +134,7 @@ export function OrderFormPanel({ selectedSymbol, userAvailableBase, userAvailabl
             </TabsTrigger>
           </TabsList>
 
-          {(["buy", "sell"] as const).map(
+          {(["Buy", "Sell"] as const).map(
             (side) =>
               activeOuterTab === side && (
                 <TabsContent key={`${side}-${activeInnerTab}`} value={activeInnerTab} className="mt-2">
@@ -189,8 +189,8 @@ export function OrderFormPanel({ selectedSymbol, userAvailableBase, userAvailabl
                       </div>
                     )}
 
-                    <Button type="submit" className={cn("w-full mt-1.5 text-sm h-8", side === "buy" ? "bg-green-600 hover:bg-green-700" : "bg-destructive hover:bg-destructive/90", "text-white")}>
-                      {side === "buy" ? `Buy / Long ${baseAsset}` : `Sell / Short ${baseAsset}`}
+                    <Button type="submit" className={cn("w-full mt-1.5 text-sm h-8", side === "Buy" ? "bg-green-600 hover:bg-green-700" : "bg-destructive hover:bg-destructive/90", "text-white")}>
+                      {side === "Buy" ? `Buy / Long ${baseAsset}` : `Sell / Short ${baseAsset}`}
                     </Button>
                   </motion.form>
                 </TabsContent>

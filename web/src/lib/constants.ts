@@ -18,11 +18,11 @@ export const MOCK_ORDER_BOOK_ASKS: OrderBookEntry[] = [
 ];
 
 export const MOCK_RECENT_TRADES: TradeEntry[] = [
-  { id: "t1", price: 40005, quantity: 0.2, time: "10:35:15", side: "buy" },
-  { id: "t2", price: 40000, quantity: 0.1, time: "10:35:02", side: "sell" },
-  { id: "t3", price: 40008, quantity: 0.3, time: "10:34:50", side: "buy" },
-  { id: "t4", price: 39995, quantity: 0.05, time: "10:34:33", side: "sell" },
-  { id: "t5", price: 40002, quantity: 0.15, time: "10:34:12", side: "buy" },
+  { id: "t1", price: 40005, quantity: 0.2, time: "10:35:15", side: "Buy" },
+  { id: "t2", price: 40000, quantity: 0.1, time: "10:35:02", side: "Sell" },
+  { id: "t3", price: 40008, quantity: 0.3, time: "10:34:50", side: "Buy" },
+  { id: "t4", price: 39995, quantity: 0.05, time: "10:34:33", side: "Sell" },
+  { id: "t5", price: 40002, quantity: 0.15, time: "10:34:12", side: "Buy" },
 ];
 
 export const MOCK_BALANCES: BalanceEntry[] = [
