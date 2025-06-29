@@ -18,7 +18,7 @@ export interface TradeEntry {
   price: number;
   quantity: number;
   time: string; // ISO string or formatted
-  side: "Buy" | "Sell";
+  side: Side;
 }
 
 export interface BalanceEntry {
@@ -32,8 +32,8 @@ export interface OpenOrderEntry {
   id: string;
   date: string; // ISO string or formatted
   pair: string; // e.g., "BTC/USD"
-  type: "Limit" | "Market";
-  side: "Buy" | "Sell";
+  type: MarketType;
+  side: Side;
   price: number;
   amount: number;
   filled: number; // Percentage or absolute
@@ -44,11 +44,18 @@ export interface OpenOrderEntry {
 export interface OrderHistoryEntry extends OpenOrderEntry {
   status: "Filled" | "Cancelled" | "Partially Filled & Cancelled";
 }
-
+export enum MarketType {
+  Limit,
+  Market,
+}
+export enum Side {
+  Buy,
+  Sell,
+}
 export type OrderFormData = {
   symbol: TradingSymbol;
-  side: "Buy" | "Sell";
-  type: "limit" | "market";
+  side: Side;
+  type: MarketType;
   price?: number;
   amount: number;
   total?: number; // For limit orders, if user specifies total value

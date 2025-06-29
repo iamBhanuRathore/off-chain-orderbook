@@ -1,4 +1,4 @@
-import { createContext, useState, useContext, ReactNode, Dispatch, SetStateAction, useEffect } from "react";
+import { createContext, useState, useContext, ReactNode, Dispatch, SetStateAction } from "react";
 import type { TradingSymbol } from "@/types";
 import { AVAILABLE_SYMBOLS } from "@/lib/constants";
 // import { useSocket } from "./socket-provider";

@@ -39,12 +39,12 @@ export default function TradingDashboardPage() {
   };
 
   return (
-    <motion.div className="flex flex-col h-[calc(100vh-theme(spacing.16)-theme(spacing.16))] gap-3" variants={containerVariants} initial="hidden" animate="visible">
+    <motion.div className="flex flex-col --doing-this-to-make-this-work-h-[calc(100vh-theme(spacing.16)-theme(spacing.16))] gap-3" variants={containerVariants} initial="hidden" animate="visible">
       <motion.div variants={itemVariants} className="flex-shrink-0">
         <TopStatsBar />
       </motion.div>
 
-      <div className="flex-grow grid grid-cols-1 lg:grid-cols-10 gap-3 overflow-hidden">
+      <div className="grid grid-cols-1 lg:grid-cols-10 gap-3 overflow-hidden">
         <motion.div className="lg:col-span-6 xl:col-span-6 flex flex-col h-full" variants={itemVariants}>
           <TradingChartPlaceholder />
         </motion.div>

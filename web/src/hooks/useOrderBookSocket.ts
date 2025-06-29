@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 // import type { OrderBookEntry, TradingSymbol } from "@/types";
 // import { MOCK_ORDER_BOOK_BIDS, MOCK_ORDER_BOOK_ASKS } from "@/lib/constants";
 import { useSocket } from "@/components/providers/socket-provider";
+import { MarketType, Side } from "@/types";
 
 // Helper function to simulate price/quantity fluctuations
 // const fluctuate = (value: number, factor: number = 0.005, precision: number = 2) => {
@@ -103,9 +104,9 @@ interface DeltaData {
   channel: string;
   data: {
     side: "Buy" | "Sell";
-    price: number;
-    new_quantity: number;
-    operation: "New" | "Update" | "Delete";
+    price: string;
+    new_quantity: string;
+    action: "New" | "Update" | "Delete";
   };
 }
 
@@ -175,25 +176,25 @@ export function useOrderBookSocket(symbol: TradingSymbol) {
 
   // Handle orderbook delta updates
   const handleOrderBookDelta = useCallback((deltaData: DeltaData) => {
-    const { side, price, new_quantity, operation } = deltaData.data;
+    const { side, price, new_quantity, action } = deltaData.data;
 
     if (side === "Buy") {
-      setBids((prevBids) => updateOrderBookLevel(prevBids, price, new_quantity, operation));
+      setBids((prevBids) => updateOrderBookLevel(prevBids, parseFloat(price), parseFloat(new_quantity), action));
     } else if (side === "Sell") {
-      setAsks((prevAsks) => updateOrderBookLevel(prevAsks, price, new_quantity, operation));
+      setAsks((prevAsks) => updateOrderBookLevel(prevAsks, parseFloat(price), parseFloat(new_quantity), action));
     }
   }, []);
 
   // Helper function to update orderbook levels
-  const updateOrderBookLevel = (levels: OrderBookEntry[], price: number, quantity: number, operation: DeltaData["data"]["operation"]): OrderBookEntry[] => {
+  const updateOrderBookLevel = (levels: OrderBookEntry[], price: number, quantity: number, action: DeltaData["data"]["action"]): OrderBookEntry[] => {
     const newLevels = [...levels];
     const existingIndex = newLevels.findIndex((level) => level.price === price);
 
-    if (operation === "Delete" || quantity === 0) {
+    if (action === "Delete" || quantity === 0) {
       if (existingIndex !== -1) {
         newLevels.splice(existingIndex, 1);
       }
-    } else if (operation === "New" || operation === "Update") {
+    } else if (action === "New" || action === "Update") {
       if (existingIndex !== -1) {
         newLevels[existingIndex] = { ...newLevels[existingIndex], quantity };
       } else {
@@ -248,7 +249,7 @@ export function useOrderBookSocket(symbol: TradingSymbol) {
 
   // Place order function
   const placeOrder = useCallback(
-    (orderData: { user_id: string; order_type: "limit" | "market"; side: "Buy" | "Sell"; price?: string; quantity: string }) => {
+    (orderData: { user_id: string; order_type: MarketType; side: Side; price?: string; quantity: string }) => {
       if (socket && isConnected) {
         socket.send(
           JSON.stringify({

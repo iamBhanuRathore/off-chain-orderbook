@@ -103,7 +103,7 @@ export function OrderBookPanel({ selectedSymbol }: OrderBookPanelProps) {
           </TabsList>
         </CardHeader>
 
-        <TabsContent value="orderbook" className={cn("flex flex-col p-0 m-0", "data-[state=inactive]:hidden")}>
+        <TabsContent value="orderbook" className={cn("flex flex-col h-full p-0 m-0 ", "data-[state=inactive]:hidden")}>
           <div className="flex justify-between items-center py-1.5 px-2 border-b border-border">
             <div className="flex items-center gap-0.5">
               <Button
@@ -147,7 +147,7 @@ export function OrderBookPanel({ selectedSymbol }: OrderBookPanelProps) {
               </Button>
             </div>
           </div>
-          <ScrollArea className="h-[calc(99%-80px)]">
+          <ScrollArea className="h-full">
             {bookView !== "bids" && (
               <div className="flex-grow overflow-y-auto">
                 <OrderBookTable data={processedAsks} type="asks" maxCumulativeQuantity={maxCumulativeAsk} baseAsset={baseAsset} quoteAsset={quoteAsset} />
