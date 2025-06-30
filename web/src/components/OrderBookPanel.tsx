@@ -4,13 +4,13 @@ import { OrderBookTable } from "./OrderBookTable";
 import { Button } from "@/components/ui/button";
 import { Minus, Plus, ListTree, ArrowUpWideNarrow, ArrowDownWideNarrow, BookOpen, History } from "lucide-react";
 import { useMemo, useState } from "react";
-import { useOrderBookSocket } from "@/hooks/useOrderBookSocket";
 import type { TradingSymbol } from "@/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TradesTable } from "./TradesTable";
 import { MOCK_RECENT_TRADES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "./ui/scroll-area";
+import { useOrderBook } from "./providers/orderbook-provider";
 
 interface OrderBookPanelProps {
   selectedSymbol: TradingSymbol;
@@ -19,7 +19,7 @@ interface OrderBookPanelProps {
 type BookViewType = "combined" | "asks" | "bids";
 
 export function OrderBookPanel({ selectedSymbol }: OrderBookPanelProps) {
-  const { bids: bidsFromHook, asks: asksFromHook, lastTradedPrice, isSubscribed, latestTrade } = useOrderBookSocket(selectedSymbol);
+  const { bids: bidsFromHook, asks: asksFromHook, lastTradedPrice, isSubscribed, latestTrade } = useOrderBook();
   console.log(bidsFromHook, asksFromHook, lastTradedPrice, isSubscribed, latestTrade);
 
   const [aggregationLevel, setAggregationLevel] = useState(0.01);

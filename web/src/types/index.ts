@@ -45,12 +45,12 @@ export interface OrderHistoryEntry extends OpenOrderEntry {
   status: "Filled" | "Cancelled" | "Partially Filled & Cancelled";
 }
 export enum MarketType {
-  Limit,
-  Market,
+  Limit = "Limit",
+  Market = "Market",
 }
 export enum Side {
-  Buy,
-  Sell,
+  Buy = "Buy",
+  Sell = "Sell",
 }
 export type OrderFormData = {
   symbol: TradingSymbol;

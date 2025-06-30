@@ -1,14 +1,19 @@
 import { z } from "zod";
-import { AVAILABLE_SYMBOLS } from "./constants";
-import { MarketType, Side, type TradingSymbol } from "@/types";
+// import { AVAILABLE_SYMBOLS } from "./constants";
+import {
+  MarketType,
+  Side,
+  //  type TradingSymbol
+} from "@/types";
 
-const tradingSymbolEnum = z.custom<TradingSymbol>((val) => AVAILABLE_SYMBOLS.includes(val as TradingSymbol), {
-  message: "Invalid trading symbol",
-});
+// const tradingSymbolEnum = z.custom<TradingSymbol>((val) => AVAILABLE_SYMBOLS.includes(val as TradingSymbol), {
+//   message: "Invalid trading symbol",
+// });
 
 export const OrderFormSchema = z
   .object({
-    symbol: tradingSymbolEnum,
+    // symbol:tradingSymbolEnum,
+    symbol: z.string().min(1, { message: "Symbol is required" }),
     side: z.nativeEnum(Side),
     type: z.nativeEnum(MarketType),
     price: z.preprocess((val) => (val === "" ? undefined : Number(val)), z.number({ invalid_type_error: "Price must be a number" }).positive({ message: "Price must be positive" }).optional()),

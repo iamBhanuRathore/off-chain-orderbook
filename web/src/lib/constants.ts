@@ -1,4 +1,4 @@
-import type { TradingSymbol, OrderBookEntry, TradeEntry, BalanceEntry, OpenOrderEntry, OrderHistoryEntry } from "@/types";
+import { type TradingSymbol, type OrderBookEntry, type TradeEntry, type BalanceEntry, type OpenOrderEntry, type OrderHistoryEntry, Side, MarketType } from "@/types";
 import rawMarkets from "@/markets.json" assert { type: "json" };
 export const AVAILABLE_SYMBOLS: TradingSymbol[] = rawMarkets as TradingSymbol[];
 export const MOCK_ORDER_BOOK_BIDS: OrderBookEntry[] = [
@@ -18,11 +18,11 @@ export const MOCK_ORDER_BOOK_ASKS: OrderBookEntry[] = [
 ];
 
 export const MOCK_RECENT_TRADES: TradeEntry[] = [
-  { id: "t1", price: 40005, quantity: 0.2, time: "10:35:15", side: "Buy" },
-  { id: "t2", price: 40000, quantity: 0.1, time: "10:35:02", side: "Sell" },
-  { id: "t3", price: 40008, quantity: 0.3, time: "10:34:50", side: "Buy" },
-  { id: "t4", price: 39995, quantity: 0.05, time: "10:34:33", side: "Sell" },
-  { id: "t5", price: 40002, quantity: 0.15, time: "10:34:12", side: "Buy" },
+  { id: "t1", price: 40005, quantity: 0.2, time: "10:35:15", side: Side.Buy },
+  { id: "t2", price: 40000, quantity: 0.1, time: "10:35:02", side: Side.Sell },
+  { id: "t3", price: 40008, quantity: 0.3, time: "10:34:50", side: Side.Buy },
+  { id: "t4", price: 39995, quantity: 0.05, time: "10:34:33", side: Side.Sell },
+  { id: "t5", price: 40002, quantity: 0.15, time: "10:34:12", side: Side.Buy },
 ];
 
 export const MOCK_BALANCES: BalanceEntry[] = [
@@ -32,11 +32,11 @@ export const MOCK_BALANCES: BalanceEntry[] = [
 ];
 
 export const MOCK_OPEN_ORDERS: OpenOrderEntry[] = [
-  { id: "o1", date: "2023-10-26 10:30", pair: "BTC/USD", type: "Limit", side: "Buy", price: 39500, amount: 0.1, filled: 0, total: 3950, status: "Open" },
-  { id: "o2", date: "2023-10-26 09:15", pair: "ETH/USD", type: "Limit", side: "Sell", price: 1900, amount: 2.0, filled: 50, total: 3800, status: "Partially Filled" },
+  { id: "o1", date: "2023-10-26 10:30", pair: "BTC/USD", type: MarketType.Limit, side: Side.Buy, price: 39500, amount: 0.1, filled: 0, total: 3950, status: "Open" },
+  { id: "o2", date: "2023-10-26 09:15", pair: "ETH/USD", type: MarketType.Limit, side: Side.Sell, price: 1900, amount: 2.0, filled: 50, total: 3800, status: "Partially Filled" },
 ];
 
 export const MOCK_ORDER_HISTORY: OrderHistoryEntry[] = [
-  { id: "oh1", date: "2023-10-25 18:00", pair: "BTC/USD", type: "Limit", side: "Buy", price: 39000, amount: 0.2, filled: 100, total: 7800, status: "Filled" },
-  { id: "oh2", date: "2023-10-25 14:20", pair: "BTC/USD", type: "Limit", side: "Sell", price: 41000, amount: 0.1, filled: 0, total: 4100, status: "Cancelled" },
+  { id: "oh1", date: "2023-10-25 18:00", pair: "BTC/USD", type: MarketType.Limit, side: Side.Buy, price: 39000, amount: 0.2, filled: 100, total: 7800, status: "Filled" },
+  { id: "oh2", date: "2023-10-25 14:20", pair: "BTC/USD", type: MarketType.Limit, side: Side.Sell, price: 41000, amount: 0.1, filled: 0, total: 4100, status: "Cancelled" },
 ];

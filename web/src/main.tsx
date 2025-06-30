@@ -6,15 +6,18 @@ import { BrowserRouter } from "react-router-dom";
 import { SelectedMarketProvider } from "./components/providers/market-context.tsx";
 import { SocketProvider } from "./components/providers/socket-provider.tsx";
 import { UserProvider } from "./components/providers/user-context.tsx";
+import { OrderBookProvider } from "./components/providers/orderbook-provider.tsx";
 
 createRoot(document.getElementById("root")!).render(
   // <StrictMode>
   <BrowserRouter>
     <SocketProvider>
       <UserProvider>
-        <SelectedMarketProvider>
-          <App />
-        </SelectedMarketProvider>
+        <OrderBookProvider>
+          <SelectedMarketProvider>
+            <App />
+          </SelectedMarketProvider>
+        </OrderBookProvider>
       </UserProvider>
     </SocketProvider>
   </BrowserRouter>

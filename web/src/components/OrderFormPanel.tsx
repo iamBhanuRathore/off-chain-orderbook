@@ -13,10 +13,12 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OrderFormSchema } from "@/lib/schemas";
 import { MarketType, Side, TradingSymbol } from "@/types"; // OrderFormData will be inferred
-import { useToast } from "@/hooks/use-toast";
+// import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Bitcoin, DollarSign } from "lucide-react";
 import { type Resolver } from "react-hook-form";
+import { useUser } from "./providers/user-context";
+import { useOrderBook } from "./providers/orderbook-provider";
 
 interface OrderFormPanelProps {
   selectedSymbol: TradingSymbol;
@@ -28,36 +30,36 @@ interface OrderFormPanelProps {
 type OrderFormValues = z.infer<typeof OrderFormSchema>;
 
 export function OrderFormPanel({ selectedSymbol, userAvailableBase, userAvailableQuote }: OrderFormPanelProps) {
-  const { toast } = useToast();
+  // console.log(selectedSymbol);
+  // const { toast } = useToast();
+  const { placeOrder } = useOrderBook();
+  const { user } = useUser();
   const [sideTab, setSideTab] = React.useState<Side>(Side.Buy);
   const [marketTypeTab, setMarketTypeTab] = React.useState<MarketType>(MarketType.Limit);
 
   const form = useForm<OrderFormValues>({
     resolver: zodResolver(OrderFormSchema) as Resolver<OrderFormValues>,
     defaultValues: {
-      symbol: selectedSymbol,
+      symbol: selectedSymbol.symbol,
       side: sideTab,
       type: marketTypeTab,
       price: undefined,
       amount: 0,
-      // Ensure defaultValues are compatible with OrderFormValues.
-      // Zod's `infer` type will dictate if fields are optional or required.
     },
   });
-
-  React.useEffect(() => {
+  const resetForm = () => {
     form.reset({
-      symbol: selectedSymbol,
+      symbol: selectedSymbol.symbol,
       side: sideTab,
       type: marketTypeTab,
-      price: form.getValues("type") === MarketType.Market ? undefined : form.getValues("price"),
+      price: marketTypeTab === MarketType.Market ? undefined : form.getValues("price"),
       amount: 0,
-      // Zod schema might make `amount` required in the output.
-      // `undefined` is acceptable here due to `reset` taking Partial.
     });
-    console.log(form.formState);
-  }, [selectedSymbol, sideTab, marketTypeTab, form]);
+  };
 
+  React.useEffect(() => {
+    resetForm();
+  }, [selectedSymbol, sideTab, marketTypeTab]);
   const orderType = form.watch("type");
   const price = form.watch("price");
   const amount = form.watch("amount");
@@ -73,38 +75,16 @@ export function OrderFormPanel({ selectedSymbol, userAvailableBase, userAvailabl
     if (finalData.type === MarketType.Market) {
       delete finalData.price;
     }
-    toast({
-      title: "Order Submitted",
-      description: `Your ${finalData.side} ${finalData.type} order for ${finalData.amount} ${finalData.symbol.quote_asset} has been submitted.`,
-      variant: "default", // Assuming quote_asset is correct, schema output might differ for symbol
-    });
     console.log("Order data:", finalData);
-
-    const fulfillmentDelay = Math.random() * 3000 + 2000;
-    setTimeout(() => {
-      const isSuccessful = Math.random() > 0.1;
-      if (isSuccessful) {
-        toast({
-          title: "🎉 Order Fulfilled!",
-          description: `Your ${finalData.side} order for ${finalData.amount} ${finalData.symbol.base_asset} fulfilled.`, // Typically amount is in base_asset
-          variant: "default",
-        });
-      } else {
-        toast({
-          title: "Order Failed",
-          description: `Your ${finalData.side} order for ${finalData.amount} ${finalData.symbol.base_asset} could not be fulfilled.`,
-          variant: "destructive",
-        });
-      }
-    }, fulfillmentDelay);
-
-    form.reset({
-      symbol: selectedSymbol,
-      side: sideTab,
-      type: marketTypeTab,
-      price: undefined,
-      amount: 0,
+    placeOrder({
+      order_type: finalData.type,
+      quantity: finalData.amount.toString(),
+      side: finalData.side,
+      price: finalData.price?.toString(),
+      user_id: user,
     });
+
+    resetForm();
   }
   const [baseAsset, quoteAsset] = [selectedSymbol.base_asset, selectedSymbol.quote_asset];
 
@@ -113,13 +93,13 @@ export function OrderFormPanel({ selectedSymbol, userAvailableBase, userAvailabl
 
   return (
     <Card className="w-full h-full flex flex-col bg-card text-foreground">
-      <Tabs value={String(sideTab)} onValueChange={(value) => setSideTab(Number(value))} className="w-full">
+      <Tabs value={sideTab} onValueChange={(val) => setSideTab(val as Side)} className="w-full">
         <CardHeader className="p-0">
           <TabsList className="grid w-full grid-cols-2 rounded-none h-10">
-            <TabsTrigger value={String(Side.Buy)} className="text-sm rounded-none data-[state=active]:bg-green-600/80 data-[state=active]:text-white data-[state=active]:shadow-none">
+            <TabsTrigger value={Side.Buy} className="text-sm rounded-none data-[state=active]:bg-green-600/80 data-[state=active]:text-white data-[state=active]:shadow-none">
               Buy / Long
             </TabsTrigger>
-            <TabsTrigger value={String(Side.Sell)} className="text-sm rounded-none data-[state=active]:bg-destructive/80 data-[state=active]:text-white data-[state=active]:shadow-none">
+            <TabsTrigger value={Side.Sell} className="text-sm rounded-none data-[state=active]:bg-destructive/80 data-[state=active]:text-white data-[state=active]:shadow-none">
               Sell / Short
             </TabsTrigger>
           </TabsList>
@@ -127,12 +107,12 @@ export function OrderFormPanel({ selectedSymbol, userAvailableBase, userAvailabl
       </Tabs>
 
       <CardContent className="p-2 flex-grow flex flex-col space-y-1">
-        <Tabs value={String(marketTypeTab)} onValueChange={(value) => setMarketTypeTab(Number(value))} className="w-full">
+        <Tabs value={marketTypeTab} onValueChange={(value) => value as MarketType} className="w-full">
           <TabsList className="grid w-full grid-cols-2 bg-muted p-1 text-muted-foreground rounded-md">
-            <TabsTrigger value={String(MarketType.Limit)} className="text-xs data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+            <TabsTrigger value={MarketType.Limit} className="text-xs data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
               Limit
             </TabsTrigger>
-            <TabsTrigger value={String(MarketType.Market)} className="text-xs data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+            <TabsTrigger value={MarketType.Market} className="text-xs data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
               Market
             </TabsTrigger>
           </TabsList>
@@ -140,7 +120,7 @@ export function OrderFormPanel({ selectedSymbol, userAvailableBase, userAvailabl
           {Object.values(Side).map(
             (side) =>
               sideTab === side && (
-                <TabsContent key={`${side}-${marketTypeTab}`} value={String(marketTypeTab)} className="mt-2">
+                <TabsContent key={`${side}-${marketTypeTab}`} value={marketTypeTab} className="mt-2">
                   <motion.form
                     key={`${side}-${marketTypeTab}-form`}
                     initial={{ opacity: 0, y: 5 }}
