@@ -1,6 +1,7 @@
 // main.rs
 mod matching_engine;
 mod consumer;
+mod matching_engine_tests;
 
 use matching_engine::MatchingEngine;
 use consumer::OrderConsumer;

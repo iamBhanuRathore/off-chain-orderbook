@@ -79,7 +79,7 @@ impl Trade {
 }
 
 // --- Structs for Data Publishing ---
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Debug, Clone, PartialEq)]
 pub enum DeltaAction {
     New,
     Update,
@@ -282,7 +282,7 @@ impl MatchingEngine {
             }
             OrderSide::Sell => {
                 let mut prices_to_remove = Vec::new();
-                let bid_prices_to_match: Vec<Reverse<Decimal>> = self.bids.range(Reverse(order.price)..).map(|(p, _)| *p).collect();
+                let bid_prices_to_match: Vec<Reverse<Decimal>> = self.bids.range(..=Reverse(order.price)).map(|(p, _)| *p).collect();
 
                 for price_rev in bid_prices_to_match {
                     if order.quantity <= dec!(0) { break; }
