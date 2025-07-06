@@ -60,7 +60,7 @@ export function OrderFormPanel({ selectedSymbol, userAvailableBase, userAvailabl
   React.useEffect(() => {
     resetForm();
   }, [selectedSymbol, sideTab, marketTypeTab]);
-  const orderType = form.watch("type");
+  // const orderType = form.watch("type");
   const price = form.watch("price");
   const amount = form.watch("amount");
 
@@ -107,7 +107,7 @@ export function OrderFormPanel({ selectedSymbol, userAvailableBase, userAvailabl
       </Tabs>
 
       <CardContent className="p-2 flex-grow flex flex-col space-y-1">
-        <Tabs value={marketTypeTab} onValueChange={(value) => value as MarketType} className="w-full">
+        <Tabs value={marketTypeTab} onValueChange={(value) => setMarketTypeTab(value as MarketType)} className="w-full">
           <TabsList className="grid w-full grid-cols-2 bg-muted p-1 text-muted-foreground rounded-md">
             <TabsTrigger value={MarketType.Limit} className="text-xs data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
               Limit

@@ -1,5 +1,5 @@
 "use client";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { CandlestickChart, UserCircle, Sun, Moon, KeyRound, Settings, LogOut, DollarSign, Menu, Bitcoin, Coins } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -10,16 +10,23 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MOCK_BALANCES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { useUser } from "@/components/providers/user-context";
 
 export default function Header() {
   const { theme, toggleTheme, isLoading } = useTheme();
   const [mounted, setMounted] = useState(false);
   const isMobile = useIsMobile();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-
+  const params = useParams();
+  const { setUser } = useUser();
   useEffect(() => {
     setMounted(true);
-  }, []);
+    if (params.userId) {
+      setUser(params.userId);
+    } else {
+      setUser(""); // Clear user if no userId in params
+    }
+  }, [setUser, params.userId]);
 
   const handleLogout = () => {
     console.log("Logout action triggered");

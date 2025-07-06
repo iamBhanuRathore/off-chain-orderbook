@@ -2,11 +2,11 @@
 
 use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
+use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};
 use std::cmp::{Ordering, Reverse};
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use uuid::Uuid;
-use rust_decimal_macros::dec;
 
 // --- Core Enums and Structs ---
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -66,7 +66,12 @@ pub struct Trade {
 }
 
 impl Trade {
-    pub fn new(taker_order_id: Uuid, maker_order_id: Uuid, price: Decimal, quantity: Decimal) -> Self {
+    pub fn new(
+        taker_order_id: Uuid,
+        maker_order_id: Uuid,
+        price: Decimal,
+        quantity: Decimal,
+    ) -> Self {
         Self {
             id: Uuid::new_v4(),
             taker_order_id,
@@ -113,7 +118,6 @@ pub struct OrderBookSnapshot {
     pub last_traded_price: Option<Decimal>,
     pub timestamp: DateTime<Utc>,
 }
-
 
 // --- Internal Engine Structures ---
 #[derive(Debug, Clone)]
@@ -194,9 +198,21 @@ impl MatchingEngine {
                     return (Ok(removed_order), deltas);
                 }
             }
-            (Err(format!("[Engine] Order {} in map but not in book.", order_id)), deltas)
+            (
+                Err(format!(
+                    "[Engine] Order {} in map but not in book.",
+                    order_id
+                )),
+                deltas,
+            )
         } else {
-            (Err(format!("[Engine] Order {} not found for cancellation.", order_id)), deltas)
+            (
+                Err(format!(
+                    "[Engine] Order {} not found for cancellation.",
+                    order_id
+                )),
+                deltas,
+            )
         }
     }
 
@@ -209,35 +225,51 @@ impl MatchingEngine {
                 let mut prices_to_remove = Vec::new();
                 let relevant_prices: Vec<Decimal> = self.asks.keys().cloned().collect();
                 for price in relevant_prices {
-                    if order.quantity <= dec!(0) { break; }
+                    if order.quantity <= dec!(0) {
+                        break;
+                    }
                     if let Some(level) = self.asks.get_mut(&price) {
                         // FINAL FIX: Pass disjoint fields `self.order_map` and `level` to the free function.
-                        let (new_trades, new_deltas) = process_level(&mut self.order_map, &mut order, level, price);
+                        let (new_trades, new_deltas) =
+                            process_level(&mut self.order_map, &mut order, level, price);
                         trades.extend(new_trades);
                         deltas.extend(new_deltas);
-                        if level.orders.is_empty() { prices_to_remove.push(price); }
+                        if level.orders.is_empty() {
+                            prices_to_remove.push(price);
+                        }
                     }
                 }
-                for price in prices_to_remove { self.asks.remove(&price); }
+                for price in prices_to_remove {
+                    self.asks.remove(&price);
+                }
             }
             OrderSide::Sell => {
                 let mut prices_to_remove = Vec::new();
                 let relevant_prices: Vec<Reverse<Decimal>> = self.bids.keys().cloned().collect();
                 for price_rev in relevant_prices {
-                    if order.quantity <= dec!(0) { break; }
+                    if order.quantity <= dec!(0) {
+                        break;
+                    }
                     if let Some(level) = self.bids.get_mut(&price_rev) {
-                         // FINAL FIX: Pass disjoint fields `self.order_map` and `level` to the free function.
-                        let (new_trades, new_deltas) = process_level(&mut self.order_map, &mut order, level, price_rev.0);
+                        // FINAL FIX: Pass disjoint fields `self.order_map` and `level` to the free function.
+                        let (new_trades, new_deltas) =
+                            process_level(&mut self.order_map, &mut order, level, price_rev.0);
                         trades.extend(new_trades);
                         deltas.extend(new_deltas);
-                        if level.orders.is_empty() { prices_to_remove.push(price_rev); }
+                        if level.orders.is_empty() {
+                            prices_to_remove.push(price_rev);
+                        }
                     }
                 }
-                for price in prices_to_remove { self.bids.remove(&price); }
+                for price in prices_to_remove {
+                    self.bids.remove(&price);
+                }
             }
         }
 
-        if let Some(last_trade) = trades.last() { self.last_traded_price = Some(last_trade.price); }
+        if let Some(last_trade) = trades.last() {
+            self.last_traded_price = Some(last_trade.price);
+        }
         (trades, deltas)
     }
 
@@ -250,13 +282,17 @@ impl MatchingEngine {
         match order.side {
             OrderSide::Buy => {
                 let mut prices_to_remove = Vec::new();
-                let ask_prices_to_match: Vec<Decimal> = self.asks.range(..=order.price).map(|(p, _)| *p).collect();
+                let ask_prices_to_match: Vec<Decimal> =
+                    self.asks.range(..=order.price).map(|(p, _)| *p).collect();
 
                 for price in ask_prices_to_match {
-                    if order.quantity <= dec!(0) { break; }
+                    if order.quantity <= dec!(0) {
+                        break;
+                    }
                     if let Some(level) = self.asks.get_mut(&price) {
-                         // FINAL FIX: Pass disjoint fields `self.order_map` and `level` to the free function.
-                        let (new_trades, new_deltas) = process_level(&mut self.order_map, &mut order, level, price);
+                        // FINAL FIX: Pass disjoint fields `self.order_map` and `level` to the free function.
+                        let (new_trades, new_deltas) =
+                            process_level(&mut self.order_map, &mut order, level, price);
                         trades.extend(new_trades);
                         deltas.extend(new_deltas);
                         if level.orders.is_empty() {
@@ -265,30 +301,48 @@ impl MatchingEngine {
                     }
                 }
 
-                for price in prices_to_remove { self.asks.remove(&price); }
+                for price in prices_to_remove {
+                    self.asks.remove(&price);
+                }
 
                 if order.quantity > dec!(0) {
-                    let level = self.bids.entry(Reverse(order.price)).or_insert_with(PriceLevel::new);
+                    let level = self
+                        .bids
+                        .entry(Reverse(order.price))
+                        .or_insert_with(PriceLevel::new);
                     let is_new_level = level.orders.is_empty();
                     level.total_quantity += order.quantity;
                     level.orders.push_back(order);
                     deltas.push(OrderBookDelta {
-                        action: if is_new_level { DeltaAction::New } else { DeltaAction::Update },
+                        action: if is_new_level {
+                            DeltaAction::New
+                        } else {
+                            DeltaAction::Update
+                        },
                         side: OrderSide::Buy,
                         price: level.orders[0].price,
                         new_quantity: level.total_quantity,
                     });
-                } else { self.order_map.remove(&order.id); }
+                } else {
+                    self.order_map.remove(&order.id);
+                }
             }
             OrderSide::Sell => {
                 let mut prices_to_remove = Vec::new();
-                let bid_prices_to_match: Vec<Reverse<Decimal>> = self.bids.range(..=Reverse(order.price)).map(|(p, _)| *p).collect();
+                let bid_prices_to_match: Vec<Reverse<Decimal>> = self
+                    .bids
+                    .range(..=Reverse(order.price))
+                    .map(|(p, _)| *p)
+                    .collect();
 
                 for price_rev in bid_prices_to_match {
-                    if order.quantity <= dec!(0) { break; }
-                     if let Some(level) = self.bids.get_mut(&price_rev) {
-                         // FINAL FIX: Pass disjoint fields `self.order_map` and `level` to the free function.
-                        let (new_trades, new_deltas) = process_level(&mut self.order_map, &mut order, level, price_rev.0);
+                    if order.quantity <= dec!(0) {
+                        break;
+                    }
+                    if let Some(level) = self.bids.get_mut(&price_rev) {
+                        // FINAL FIX: Pass disjoint fields `self.order_map` and `level` to the free function.
+                        let (new_trades, new_deltas) =
+                            process_level(&mut self.order_map, &mut order, level, price_rev.0);
                         trades.extend(new_trades);
                         deltas.extend(new_deltas);
                         if level.orders.is_empty() {
@@ -297,7 +351,9 @@ impl MatchingEngine {
                     }
                 }
 
-                for price_rev in prices_to_remove { self.bids.remove(&price_rev); }
+                for price_rev in prices_to_remove {
+                    self.bids.remove(&price_rev);
+                }
 
                 if order.quantity > dec!(0) {
                     let level = self.asks.entry(order.price).or_insert_with(PriceLevel::new);
@@ -305,27 +361,45 @@ impl MatchingEngine {
                     level.total_quantity += order.quantity;
                     level.orders.push_back(order);
                     deltas.push(OrderBookDelta {
-                        action: if is_new_level { DeltaAction::New } else { DeltaAction::Update },
+                        action: if is_new_level {
+                            DeltaAction::New
+                        } else {
+                            DeltaAction::Update
+                        },
                         side: OrderSide::Sell,
                         price: level.orders[0].price,
                         new_quantity: level.total_quantity,
                     });
-                } else { self.order_map.remove(&order.id); }
+                } else {
+                    self.order_map.remove(&order.id);
+                }
             }
         }
 
-        if let Some(last_trade) = trades.last() { self.last_traded_price = Some(last_trade.price); }
+        if let Some(last_trade) = trades.last() {
+            self.last_traded_price = Some(last_trade.price);
+        }
         (trades, deltas)
     }
 
     pub fn get_order_book_snapshot(&self) -> OrderBookSnapshot {
-        let bids = self.bids.iter().map(|(price_rev, level)| {
-            OrderBookLevel { price: price_rev.0, quantity: level.total_quantity }
-        }).collect();
+        let bids = self
+            .bids
+            .iter()
+            .map(|(price_rev, level)| OrderBookLevel {
+                price: price_rev.0,
+                quantity: level.total_quantity,
+            })
+            .collect();
 
-        let asks = self.asks.iter().map(|(price, level)| {
-             OrderBookLevel { price: *price, quantity: level.total_quantity }
-        }).collect();
+        let asks = self
+            .asks
+            .iter()
+            .map(|(price, level)| OrderBookLevel {
+                price: *price,
+                quantity: level.total_quantity,
+            })
+            .collect();
 
         OrderBookSnapshot {
             symbol: self.symbol.clone(),
@@ -348,18 +422,29 @@ fn process_level(
     order_map: &mut HashMap<Uuid, (OrderSide, Decimal)>,
     taker_order: &mut Order,
     level: &mut PriceLevel,
-    trade_price: Decimal
+    trade_price: Decimal,
 ) -> (Vec<Trade>, Vec<OrderBookDelta>) {
     let mut trades = Vec::new();
     let mut deltas = Vec::new();
     let mut orders_to_remove_indices = Vec::new();
-    let maker_side = if taker_order.side == OrderSide::Buy { OrderSide::Sell } else { OrderSide::Buy };
+    let maker_side = if taker_order.side == OrderSide::Buy {
+        OrderSide::Sell
+    } else {
+        OrderSide::Buy
+    };
 
     for (idx, maker_order) in level.orders.iter_mut().enumerate() {
-        if taker_order.quantity <= dec!(0) { break; }
+        if taker_order.quantity <= dec!(0) {
+            break;
+        }
         let trade_quantity = taker_order.quantity.min(maker_order.quantity);
 
-        trades.push(Trade::new(taker_order.id, maker_order.id, trade_price, trade_quantity));
+        trades.push(Trade::new(
+            taker_order.id,
+            maker_order.id,
+            trade_price,
+            trade_quantity,
+        ));
 
         taker_order.quantity -= trade_quantity;
         maker_order.quantity -= trade_quantity;
@@ -377,10 +462,14 @@ fn process_level(
     }
 
     deltas.push(OrderBookDelta {
-        action: if level.orders.is_empty() { DeltaAction::Delete } else { DeltaAction::Update },
+        action: if level.orders.is_empty() {
+            DeltaAction::Delete
+        } else {
+            DeltaAction::Update
+        },
         side: maker_side,
         price: trade_price,
-        new_quantity: level.total_quantity
+        new_quantity: level.total_quantity,
     });
 
     (trades, deltas)

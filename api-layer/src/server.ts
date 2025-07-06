@@ -3,11 +3,12 @@ import express from "express";
 import type { Express, Request, Response } from "express";
 import cors from "cors";
 import marketRoutes from "./routes/marketRoutes";
+import userRoutes from "./routes/userRoutes";
 import { errorHandler } from "./middleware/errorHandler";
+import { prisma } from "./lib/db";
 
 const app: Express = express();
 const PORT = process.env.PORT || 3000;
-
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -19,6 +20,7 @@ app.get("/health", (req: Request, res: Response) => {
 
 // API Routes
 app.use("/api/v1", marketRoutes);
+app.use("/api/v1", userRoutes);
 
 // 404 Handler for undefined routes
 app.use((req: Request, res: Response) => {

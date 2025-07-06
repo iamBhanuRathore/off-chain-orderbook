@@ -11,15 +11,15 @@ import { OrderBookProvider } from "./components/providers/orderbook-provider.tsx
 createRoot(document.getElementById("root")!).render(
   // <StrictMode>
   <BrowserRouter>
-    <SocketProvider>
-      <UserProvider>
+    <UserProvider>
+      <SocketProvider>
         <OrderBookProvider>
           <SelectedMarketProvider>
             <App />
           </SelectedMarketProvider>
         </OrderBookProvider>
-      </UserProvider>
-    </SocketProvider>
+      </SocketProvider>
+    </UserProvider>
   </BrowserRouter>
   // </StrictMode>
 );

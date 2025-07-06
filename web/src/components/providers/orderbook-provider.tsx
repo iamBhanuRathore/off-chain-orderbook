@@ -1,6 +1,5 @@
 // src/components/providers/orderbook-provider.tsx
 "use client";
-
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { useSocket } from "@/components/providers/socket-provider";
 import { useSelectedMarket } from "@/components/providers/market-context";
@@ -72,41 +71,47 @@ export function OrderBookProvider({ children }: { children: ReactNode }) {
       const message: WebSocketMessage = JSON.parse(event.data);
 
       switch (message.type) {
-        case "trading_pairs":
+        case "trading_pairs": {
           console.log("Available trading pairs:", message.data);
           break;
+        }
 
-        case "subscribed":
+        case "subscribed": {
           console.log("Successfully subscribed to:", message.data);
           setIsSubscribed(true);
           break;
+        }
 
-        case "redis_orderbook":
+        case "redis_orderbook": {
           console.log("Received orderbook snapshot:", message.data);
-          const orderbookData: OrderBookData = message.data;
+          const orderbookData = message.data as OrderBookData;
           setBids(orderbookData.bids || []);
           setAsks(orderbookData.asks || []);
           setLastTradedPrice(orderbookData.last_traded_price);
           break;
+        }
 
-        case "orderbook_delta":
+        case "orderbook_delta": {
           console.log("Received orderbook delta:", message.data);
           handleOrderBookDelta(message.data as DeltaData);
           break;
+        }
 
-        case "trade":
+        case "trade": {
           console.log("Received trade:", message.data);
           const tradeData = message.data as TradeData;
           setLatestTrade(tradeData.data);
           setLastTradedPrice(tradeData.data.price);
           break;
+        }
 
-        case "error":
+        case "error": {
           console.error("WebSocket error:", message.data);
           break;
-
-        default:
+        }
+        default: {
           console.log("Unhandled message type:", message.type, message.data);
+        }
       }
     } catch (error) {
       console.error("Error parsing WebSocket message:", error);

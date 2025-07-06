@@ -1,0 +1,246 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+model User {
+  id             String        @id @default(cuid())
+  email          String        @unique
+  password       String
+  // apiKey      String        @unique
+  // apiSecret   String        @unique
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  orders         Order[]
+  balances       Balance[]
+  tradesAsBuyer  Trade[]       @relation("BuyerTrades")
+  tradesAsSeller Trade[]       @relation("SellerTrades")
+  transactions   Transaction[]
+}
+
+model Market {
+  id          String   @id @default(cuid())
+  symbol      String   @unique // e.g., "BTC_USDT"
+  baseAsset   String // e.g., "BTC"
+  quoteAsset  String // e.g., "USDT"
+  minPrice    Decimal
+  maxPrice    Decimal
+  tickSize    Decimal // minimum price increment
+  minQuantity Decimal
+  maxQuantity Decimal
+  stepSize    Decimal // minimum quantity increment
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Balance {
+  id        String   @id @default(cuid())
+  userId    String
+  asset     String
+  amount    BigInt   @default(0)
+  locked    BigInt   @default(0) // amount locked in orders
+  decimal   Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, asset])
+  @@index([userId])
+}
+
+model Fee {
+  id        String   @id @default(cuid())
+  market    String
+  makerFee  Decimal // fee for providing liquidity
+  takerFee  Decimal // fee for taking liquidity
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([market])
+}
+
+enum Side {
+  Buy
+  Sell
+}
+
+enum OrderStatus {
+  Open
+  Filled
+  PartiallyFilled
+  PartiallyCanceled
+  Canceled
+}
+
+enum OrderType {
+  Market
+  Limit
+  StopLimit
+  StopMarket
+}
+
+enum TimeInForce {
+  GTC // Good Till Canceled
+  IOC // Immediate Or Cancel
+  FOK // Fill Or Kill
+}
+
+model Order {
+  id            String      @id @default(cuid())
+  userId        String
+  market        String
+  price         Decimal // for Market orders, you can ignore or set to 0
+  quantity      Decimal
+  filled        Decimal     @default(0) // how much has been filled
+  remaining     Decimal // calculated field or stored
+  side          Side
+  status        OrderStatus @default(Open)
+  orderType     OrderType   @default(Limit)
+  timeInForce   TimeInForce @default(GTC)
+  stopPrice     Decimal? // for stop orders
+  averagePrice  Decimal? // average fill price
+  clientOrderId String? // client-provided ID
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  canceledAt    DateTime?
+  filledAt      DateTime?
+  user          User        @relation(fields: [userId], references: [id])
+  buyTrades     Trade[]     @relation("BuyOrderTrades")
+  sellTrades    Trade[]     @relation("SellOrderTrades")
+  takerTrades   Trade[]     @relation("TakerOrderTrades")
+  makerTrades   Trade[]     @relation("MakerOrderTrades")
+
+  @@index([userId])
+  @@index([market, status])
+  @@index([market, side, price])
+  @@index([market, status, createdAt])
+  @@index([clientOrderId])
+}
+
+model Trade {
+  id           String   @id @default(cuid())
+  market       String
+  price        Decimal
+  quantity     Decimal
+  takerSide    Side // Which side was the taker for this trade
+  buyOrderId   String
+  sellOrderId  String
+  takerOrderId String // which order was the taker
+  makerOrderId String // which order was the maker
+  buyerId      String
+  sellerId     String
+  fee          Decimal // fee charged
+  feeAsset     String // asset in which fee was charged
+  timestamp    DateTime @default(now())
+  buyOrder     Order    @relation("BuyOrderTrades", fields: [buyOrderId], references: [id])
+  sellOrder    Order    @relation("SellOrderTrades", fields: [sellOrderId], references: [id])
+  takerOrder   Order    @relation("TakerOrderTrades", fields: [takerOrderId], references: [id])
+  makerOrder   Order    @relation("MakerOrderTrades", fields: [makerOrderId], references: [id])
+  buyer        User     @relation("BuyerTrades", fields: [buyerId], references: [id])
+  seller       User     @relation("SellerTrades", fields: [sellerId], references: [id])
+
+  @@index([buyOrderId])
+  @@index([sellOrderId])
+  @@index([buyerId])
+  @@index([sellerId])
+  @@index([market])
+  @@index([market, timestamp])
+  @@index([takerOrderId])
+  @@index([makerOrderId])
+}
+
+model OrderBookSnapshot {
+  id        String   @id @default(cuid())
+  market    String
+  bids      Json // [{price: "100", quantity: "1.5"}, ...]
+  asks      Json // [{price: "101", quantity: "2.0"}, ...]
+  timestamp DateTime @default(now())
+
+  @@index([market, timestamp])
+}
+
+enum TransactionType {
+  Deposit
+  Withdrawal
+  Trade
+  Fee
+  OrderLock
+  OrderUnlock
+}
+
+enum TransactionStatus {
+  Pending
+  Completed
+  Failed
+}
+
+model Transaction {
+  id        String            @id @default(cuid())
+  userId    String
+  type      TransactionType
+  asset     String
+  amount    Decimal
+  balance   Decimal // balance after transaction
+  reference String? // reference to order/trade
+  status    TransactionStatus @default(Pending)
+  timestamp DateTime          @default(now())
+  user      User              @relation(fields: [userId], references: [id])
+
+  @@index([userId, timestamp])
+  @@index([reference])
+  @@index([status])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  details   Json
+  timestamp DateTime @default(now())
+
+  @@index([userId, timestamp])
+  @@index([action])
+}
+
+// Market data and analytics
+model MarketStats {
+  id                    String   @id @default(cuid())
+  market                String
+  lastPrice             Decimal
+  volume24h             Decimal
+  high24h               Decimal
+  low24h                Decimal
+  priceChange24h        Decimal
+  priceChangePercent24h Decimal
+  bidPrice              Decimal
+  askPrice              Decimal
+  spread                Decimal
+  timestamp             DateTime @default(now())
+
+  @@unique([market])
+  @@index([market, timestamp])
+}
+
+// Candlestick data for charts
+model Candlestick {
+  id        String   @id @default(cuid())
+  market    String
+  interval  String // 1m, 5m, 15m, 1h, 4h, 1d, etc.
+  openTime  DateTime
+  closeTime DateTime
+  open      Decimal
+  high      Decimal
+  low       Decimal
+  close     Decimal
+  volume    Decimal
+  trades    Int // number of trades
+
+  @@unique([market, interval, openTime])
+  @@index([market, interval, openTime])
+}

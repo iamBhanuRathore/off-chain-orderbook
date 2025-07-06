@@ -1,8 +1,10 @@
+// Fixed client socket provider with better error handling
+
 "use client";
 
+import { useUser } from "@/components/providers/user-context";
 import React, { useCallback, useRef } from "react";
 import { createContext, useContext, useEffect, useState } from "react";
-// import { io as ClientIO } from "socket.io-client";
 
 type SocketProviderType = {
   socket: WebSocket | null;
@@ -26,6 +28,7 @@ export const useSocket = () => {
 
 export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   const [socket, setSocket] = useState<WebSocket | null>(null);
+  const { user } = useUser();
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | number>(0);
@@ -37,10 +40,24 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
+    if (!user) {
+      console.log("Cannot connect: No user provided");
+      return;
+    }
+
     setIsConnecting(true);
 
     try {
-      const ws = new WebSocket("ws://localhost:4000"); // Adjust URL as needed
+      // Use fallback URL if environment variable is not set
+      const baseUrl = import.meta.env.VITE_SOCKET_SERVER_URL || "ws://localhost:4000";
+      console.log("Connecting to:", baseUrl);
+
+      const url = new URL(baseUrl);
+      url.searchParams.set("user_id", user);
+
+      console.log("Final WebSocket URL:", url.toString());
+
+      const ws = new WebSocket(url.toString());
 
       ws.onopen = () => {
         console.log("WebSocket connected");
@@ -49,11 +66,35 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         reconnectAttempts.current = 0;
       };
 
+      ws.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          console.log("Received message:", message);
+
+          // Handle authentication errors
+          if (message.type === "error" && message.data.type === "authentication_error") {
+            console.error("Authentication error:", message.data.message);
+            setIsConnecting(false);
+            setIsConnected(false);
+            ws.close();
+            return;
+          }
+        } catch (error) {
+          console.error("Failed to parse WebSocket message:", error);
+        }
+      };
+
       ws.onclose = (event) => {
         console.log("WebSocket disconnected:", event.code, event.reason);
         setIsConnected(false);
         setIsConnecting(false);
         setSocket(null);
+
+        // Don't auto-reconnect if it's an authentication error
+        if (event.code === 1008) {
+          console.log("Authentication failed, not reconnecting");
+          return;
+        }
 
         // Auto-reconnect logic
         if (reconnectAttempts.current < maxReconnectAttempts) {
@@ -77,10 +118,12 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
       console.error("Failed to create WebSocket connection:", error);
       setIsConnecting(false);
     }
-  }, [isConnecting, socket]);
+  }, [isConnecting, socket, user]);
 
   useEffect(() => {
-    connect();
+    if (user) {
+      connect();
+    }
 
     return () => {
       if (reconnectTimeoutRef.current) {
@@ -90,7 +133,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         socket.close();
       }
     };
-  }, []);
+  }, [user]);
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -103,6 +146,5 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     setIsConnected(false);
   }, [socket]);
 
-  // return { socket, isConnected, isConnecting, connect, disconnect };
   return <SocketContext.Provider value={{ socket, isConnected, isConnecting, connect, disconnect }}>{children}</SocketContext.Provider>;
 };

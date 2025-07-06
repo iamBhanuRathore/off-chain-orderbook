@@ -1,12 +1,14 @@
 // consumer.rs
-use crate::matching_engine::{MatchingEngine, Order, Trade, OrderBookDelta, DeltaAction, OrderSide};
+use crate::matching_engine::{
+    DeltaAction, MatchingEngine, Order, OrderBookDelta, OrderSide, Trade,
+};
 use redis::{AsyncCommands, pipe};
+use rust_decimal::prelude::ToPrimitive;
 use serde::Deserialize;
 use serde_json;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use uuid::Uuid;
-use rust_decimal::prelude::ToPrimitive;
 
 #[derive(Deserialize, Debug)]
 #[serde(tag = "command", content = "payload", rename_all = "PascalCase")]
@@ -42,8 +44,8 @@ impl OrderConsumer {
         ltp_key: String,
         snapshot_key: String, // We'll use this for snapshot requests
         delta_channel_key: String,
-        bids_orderbook_key:String,
-        asks_orderbook_key:String
+        bids_orderbook_key: String,
+        asks_orderbook_key: String,
     ) -> Result<Self, redis::RedisError> {
         let redis_client = redis::Client::open(redis_url)?;
         let connection_manager = redis::aio::ConnectionManager::new(redis_client).await?;
@@ -68,7 +70,9 @@ impl OrderConsumer {
     }
 
     async fn publish_deltas(&self, deltas: Vec<OrderBookDelta>) {
-        if deltas.is_empty() { return; }
+        if deltas.is_empty() {
+            return;
+        }
 
         let mut con = self.redis_client.clone();
         for delta in deltas {
@@ -80,7 +84,9 @@ impl OrderConsumer {
     }
 
     async fn update_redis_orderbook(&self, deltas: &[OrderBookDelta]) {
-        if deltas.is_empty() { return; }
+        if deltas.is_empty() {
+            return;
+        }
 
         let mut con = self.redis_client.clone();
 
@@ -90,14 +96,14 @@ impl OrderConsumer {
                 OrderSide::Sell => &self.asks_orderbook_key,
             };
             let score = if delta.side == OrderSide::Buy {
-                       -delta.price.to_f64().unwrap_or(0.0)
-                   } else {
-                       delta.price.to_f64().unwrap_or(0.0)
-                   };
+                -delta.price.to_f64().unwrap_or(0.0)
+            } else {
+                delta.price.to_f64().unwrap_or(0.0)
+            };
             let _: Result<i32, _> = con.zrembyscore(key, score, score).await;
             match delta.action {
                 DeltaAction::Delete => {
-                  // Nothing more to do - entry already removed
+                    // Nothing more to do - entry already removed
                 }
                 DeltaAction::New | DeltaAction::Update => {
                     // Score is the price (for sorting), member is price:quantity
@@ -110,7 +116,9 @@ impl OrderConsumer {
     }
 
     async fn publish_trades_and_ltp(&self, trades: Vec<Trade>) {
-        if trades.is_empty() { return; }
+        if trades.is_empty() {
+            return;
+        }
 
         let mut con = self.redis_client.clone();
 
@@ -130,7 +138,10 @@ impl OrderConsumer {
     }
 
     async fn handle_snapshot_request(&self, response_channel: String) {
-        println!("[{}] Generating snapshot for channel: {}", self.symbol, response_channel);
+        println!(
+            "[{}] Generating snapshot for channel: {}",
+            self.symbol, response_channel
+        );
 
         let engine_guard = self.engine.lock().await;
         let snapshot = engine_guard.get_order_book_snapshot();
@@ -139,14 +150,23 @@ impl OrderConsumer {
         if let Ok(snapshot_json) = serde_json::to_string(&snapshot) {
             let mut con = self.redis_client.clone();
             let _: Result<(), _> = con.publish(&response_channel, snapshot_json).await;
-            println!("[{}] Snapshot sent to channel: {}", self.symbol, response_channel);
+            println!(
+                "[{}] Snapshot sent to channel: {}",
+                self.symbol, response_channel
+            );
         } else {
-            eprintln!("[{}] Failed to serialize snapshot for channel: {}", self.symbol, response_channel);
+            eprintln!(
+                "[{}] Failed to serialize snapshot for channel: {}",
+                self.symbol, response_channel
+            );
         }
     }
 
     pub async fn run_consumer(&self) {
-        println!("[{}] Consumer started. Listening for orders, cancellations, and snapshot requests...", self.symbol);
+        println!(
+            "[{}] Consumer started. Listening for orders, cancellations, and snapshot requests...",
+            self.symbol
+        );
         let queues = vec![
             self.order_queue_key.as_str(),
             self.cancel_queue_key.as_str(),
@@ -155,7 +175,8 @@ impl OrderConsumer {
 
         loop {
             let mut con = self.redis_client.clone();
-            let result: Result<Option<(String, String)>, redis::RedisError> = con.brpop(&queues, 0.0).await;
+            let result: Result<Option<(String, String)>, redis::RedisError> =
+                con.brpop(&queues, 0.0).await;
 
             match result {
                 Ok(Some((queue, data_json))) => {
@@ -163,8 +184,12 @@ impl OrderConsumer {
 
                     if queue == self.snapshot_request_queue_key {
                         // Handle snapshot request separately
-                        if let Ok(snapshot_request) = serde_json::from_str::<EngineCommand>(&data_json) {
-                            if let EngineCommand::SnapshotRequest { response_channel } = snapshot_request {
+                        if let Ok(snapshot_request) =
+                            serde_json::from_str::<EngineCommand>(&data_json)
+                        {
+                            if let EngineCommand::SnapshotRequest { response_channel } =
+                                snapshot_request
+                            {
                                 self.handle_snapshot_request(response_channel).await;
                             }
                         }
@@ -182,8 +207,12 @@ impl OrderConsumer {
                                     (trades, deltas) = engine_guard.add_order(order);
                                 }
                                 EngineCommand::CancelOrder { order_id } => {
-                                    println!("[{}] Processing CancelOrder {}", self.symbol, order_id);
-                                    let (result, cancel_deltas) = engine_guard.cancel_order(order_id);
+                                    println!(
+                                        "[{}] Processing CancelOrder {}",
+                                        self.symbol, order_id
+                                    );
+                                    let (result, cancel_deltas) =
+                                        engine_guard.cancel_order(order_id);
                                     if let Err(e) = result {
                                         eprintln!("[{}] {}", self.symbol, e);
                                     }
@@ -209,13 +238,19 @@ impl OrderConsumer {
                             println!("[{}] Command processed.", self.symbol);
                         }
                         Err(e) => {
-                            eprintln!("[{}] Failed to deserialize command from JSON '{}': {}", self.symbol, data_json, e);
+                            eprintln!(
+                                "[{}] Failed to deserialize command from JSON '{}': {}",
+                                self.symbol, data_json, e
+                            );
                         }
                     }
                 }
                 Ok(None) => continue, // Should not happen with 0.0 timeout
                 Err(e) => {
-                    eprintln!("[{}] Error from Redis: {}. Retrying in 2s...", self.symbol, e);
+                    eprintln!(
+                        "[{}] Error from Redis: {}. Retrying in 2s...",
+                        self.symbol, e
+                    );
                     tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
                 }
             }
@@ -227,7 +262,9 @@ impl OrderConsumer {
         let mut con = self.redis_client.clone();
 
         // Clear existing orderbook data
-        let _: Result<(), _> = con.del(&[&self.bids_orderbook_key, &self.asks_orderbook_key]).await;
+        let _: Result<(), _> = con
+            .del(&[&self.bids_orderbook_key, &self.asks_orderbook_key])
+            .await;
 
         // Get initial snapshot and populate Redis
         let engine_guard = self.engine.lock().await;
@@ -252,8 +289,12 @@ impl OrderConsumer {
             }
         }
 
-        println!("[{}] Redis orderbook initialized with {} bids and {} asks",
-                 self.symbol, snapshot.bids.len(), snapshot.asks.len());
+        println!(
+            "[{}] Redis orderbook initialized with {} bids and {} asks",
+            self.symbol,
+            snapshot.bids.len(),
+            snapshot.asks.len()
+        );
     }
 }
 
