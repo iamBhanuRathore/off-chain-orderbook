@@ -1,13 +1,13 @@
 // src/routes/marketRoutes.ts
 
 import { Router } from "express";
-import * as marketController from "../controllers/marketController";
-// import { validateOrder } from '../middleware/validator';
+import * as userController from "@/controllers/userController";
+import { authenticateUser } from "@/middleware/authMiddleware";
 
 const router = Router();
 
-router.post("/myOrders", marketController.createOrder);
-router.delete("/myBalances", marketController.deleteOrder);
-router.get("/orderHistory", marketController.fetchOrderBook);
+router.post("/myOrders", authenticateUser, userController.orderHistory);
+router.delete("/myBalances", userController.myBalances);
+router.get("/orderHistory", userController.openOrders);
 
 export default router;

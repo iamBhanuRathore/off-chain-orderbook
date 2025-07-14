@@ -23,20 +23,37 @@ model User {
   transactions   Transaction[]
 }
 
+model Asset {
+  symbol     String   @id // e.g. "BTC", "USDT"
+  name       String
+  decimals   Int // number of decimals (e.g., 6 for USDC)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  baseAsset  Market[] @relation("BaseAsset")
+  quoteAsset Market[] @relation("QuoteAsset")
+
+  @@unique([symbol])
+  @@index([symbol])
+}
+
 model Market {
   id          String   @id @default(cuid())
   symbol      String   @unique // e.g., "BTC_USDT"
   baseAsset   String // e.g., "BTC"
   quoteAsset  String // e.g., "USDT"
+  base        Asset    @relation("BaseAsset", fields: [baseAsset], references: [symbol])
+  quote       Asset    @relation("QuoteAsset", fields: [quoteAsset], references: [symbol])
   minPrice    Decimal
   maxPrice    Decimal
   tickSize    Decimal // minimum price increment
   minQuantity Decimal
   maxQuantity Decimal
   stepSize    Decimal // minimum quantity increment
+  lastPrice   Decimal? @default(0)
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  fee         Fee?     @relation(fields: [symbol], references: [market])
 }
 
 model Balance {
@@ -55,12 +72,13 @@ model Balance {
 }
 
 model Fee {
-  id        String   @id @default(cuid())
-  market    String
-  makerFee  Decimal // fee for providing liquidity
-  takerFee  Decimal // fee for taking liquidity
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  market      String
+  makerFeeBps Int // e.g. 5 for 0.05%
+  takerFeeBps Int // e.g. 10 for 0.1% e.g. 1 for 0.01%
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  Market      Market?
 
   @@unique([market])
 }
@@ -113,8 +131,6 @@ model Order {
   user          User        @relation(fields: [userId], references: [id])
   buyTrades     Trade[]     @relation("BuyOrderTrades")
   sellTrades    Trade[]     @relation("SellOrderTrades")
-  takerTrades   Trade[]     @relation("TakerOrderTrades")
-  makerTrades   Trade[]     @relation("MakerOrderTrades")
 
   @@index([userId])
   @@index([market, status])
@@ -124,26 +140,22 @@ model Order {
 }
 
 model Trade {
-  id           String   @id @default(cuid())
-  market       String
-  price        Decimal
-  quantity     Decimal
-  takerSide    Side // Which side was the taker for this trade
-  buyOrderId   String
-  sellOrderId  String
-  takerOrderId String // which order was the taker
-  makerOrderId String // which order was the maker
-  buyerId      String
-  sellerId     String
-  fee          Decimal // fee charged
-  feeAsset     String // asset in which fee was charged
-  timestamp    DateTime @default(now())
-  buyOrder     Order    @relation("BuyOrderTrades", fields: [buyOrderId], references: [id])
-  sellOrder    Order    @relation("SellOrderTrades", fields: [sellOrderId], references: [id])
-  takerOrder   Order    @relation("TakerOrderTrades", fields: [takerOrderId], references: [id])
-  makerOrder   Order    @relation("MakerOrderTrades", fields: [makerOrderId], references: [id])
-  buyer        User     @relation("BuyerTrades", fields: [buyerId], references: [id])
-  seller       User     @relation("SellerTrades", fields: [sellerId], references: [id])
+  id          String   @id @default(cuid())
+  market      String
+  price       Decimal
+  quantity    Decimal
+  takerSide   Side // Which side was the taker for this trade
+  buyOrderId  String
+  sellOrderId String
+  buyerId     String
+  sellerId    String
+  fee         BigInt // fee in lamports
+  feeAsset    String // asset in which fee was charged
+  timestamp   DateTime @default(now())
+  buyOrder    Order    @relation("BuyOrderTrades", fields: [buyOrderId], references: [id])
+  sellOrder   Order    @relation("SellOrderTrades", fields: [sellOrderId], references: [id])
+  buyer       User     @relation("BuyerTrades", fields: [buyerId], references: [id])
+  seller      User     @relation("SellerTrades", fields: [sellerId], references: [id])
 
   @@index([buyOrderId])
   @@index([sellOrderId])
@@ -151,8 +163,6 @@ model Trade {
   @@index([sellerId])
   @@index([market])
   @@index([market, timestamp])
-  @@index([takerOrderId])
-  @@index([makerOrderId])
 }
 
 model OrderBookSnapshot {
@@ -223,15 +233,27 @@ model MarketStats {
   spread                Decimal
   timestamp             DateTime @default(now())
 
-  @@unique([market])
+  @@unique([market, timestamp])
   @@index([market, timestamp])
+}
+
+enum CandlestickInterval {
+  M1
+  M5
+  M15
+  M30
+  H1
+  H4
+  D1
+  W1
+  MN1
 }
 
 // Candlestick data for charts
 model Candlestick {
-  id        String   @id @default(cuid())
+  id        String              @id @default(cuid())
   market    String
-  interval  String // 1m, 5m, 15m, 1h, 4h, 1d, etc.
+  interval  CandlestickInterval
   openTime  DateTime
   closeTime DateTime
   open      Decimal

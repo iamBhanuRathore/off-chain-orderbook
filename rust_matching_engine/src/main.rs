@@ -1,10 +1,10 @@
 // main.rs
-mod matching_engine;
 mod consumer;
+mod matching_engine;
 mod matching_engine_tests;
 
-use matching_engine::MatchingEngine;
 use consumer::OrderConsumer;
+use matching_engine::MatchingEngine;
 use serde::Deserialize;
 use std::fs;
 use std::sync::Arc;
@@ -51,10 +51,15 @@ async fn main() {
             continue;
         }
 
-        let symbol_key_part = format!("{}_{}", config.base_asset.to_uppercase(), config.quote_asset.to_uppercase());
+        let symbol_key_part = format!(
+            "{}_{}",
+            config.base_asset.to_uppercase(),
+            config.quote_asset.to_uppercase()
+        );
         let order_queue_name = format!("orderbook:orders:{}", symbol_key_part);
         let cancel_queue_name = format!("orderbook:cancel:{}", symbol_key_part);
         let trade_queue_name = format!("orderbook:trades:{}", symbol_key_part);
+        let processed_orders_queue_name = format!("engine:processed_orders:{}", symbol_key_part);
         let ltp_key_name = format!("orderbook:ltp:{}", symbol_key_part);
         let snapshot_key_name = format!("orderbook:snapshot:{}", symbol_key_part);
         let delta_channel_name = format!("orderbook:deltas:{}", symbol_key_part);
@@ -78,12 +83,15 @@ async fn main() {
             order_queue_name.clone(),
             cancel_queue_name.clone(),
             trade_queue_name.clone(),
+            processed_orders_queue_name.clone(),
             ltp_key_name.clone(),
             snapshot_key_name.clone(),
             delta_channel_name.clone(),
             bids_orderbook_key.clone(),
-            asks_orderbook_key.clone()
-        ).await {
+            asks_orderbook_key.clone(),
+        )
+        .await
+        {
             Ok(c) => c,
             Err(e) => {
                 eprintln!("Failed to create consumer for {}: {}", config.symbol, e);
@@ -109,14 +117,22 @@ async fn main() {
     println!("\n--- Example Commands for BTC_INR ---");
 
     println!("\n1. Submit Orders:");
-    println!(r#"LPUSH orderbook:orders:BTC_INR '{{"command":"NewOrder","payload":{{"user_id":1,"order_type":"Limit","side":"Buy","price":"50000","quantity":"1.5"}}}}'"#);
-    println!(r#"LPUSH orderbook:orders:BTC_INR '{{"command":"NewOrder","payload":{{"user_id":2,"order_type":"Market","side":"Sell","price":"0","quantity":"0.5"}}}}'"#);
+    println!(
+        r#"LPUSH orderbook:orders:BTC_INR '{{"command":"NewOrder","payload":{{"user_id":1,"order_type":"Limit","side":"Buy","price":"50000","quantity":"1.5"}}}}'"#
+    );
+    println!(
+        r#"LPUSH orderbook:orders:BTC_INR '{{"command":"NewOrder","payload":{{"user_id":2,"order_type":"Market","side":"Sell","price":"0","quantity":"0.5"}}}}'"#
+    );
 
     println!("\n2. Cancel Orders:");
-    println!(r#"LPUSH orderbook:cancel:BTC_INR '{{"command":"CancelOrder","payload":{{"order_id":"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"}}}}'"#);
+    println!(
+        r#"LPUSH orderbook:cancel:BTC_INR '{{"command":"CancelOrder","payload":{{"order_id":"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"}}}}'"#
+    );
 
     println!("\n3. Request Snapshot:");
-    println!(r#"LPUSH orderbook:snapshot:BTC_INR:requests '{{"command":"SnapshotRequest","payload":{{"response_channel":"my_snapshot_channel"}}}}'"#);
+    println!(
+        r#"LPUSH orderbook:snapshot:BTC_INR:requests '{{"command":"SnapshotRequest","payload":{{"response_channel":"my_snapshot_channel"}}}}'"#
+    );
     println!("SUBSCRIBE my_snapshot_channel");
 
     println!("\n4. Query Redis Orderbook Directly:");

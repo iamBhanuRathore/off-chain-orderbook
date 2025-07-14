@@ -2,7 +2,7 @@
 
 import type{ Request, Response, NextFunction } from 'express';
 import * as redisService from '../services/redisService';
-import type{ OrderPayload } from '../types';
+import type{ OrderPayload } from '../middleware/validator';
 
 // Higher-order function to handle async errors
 const asyncHandler = (fn: Function) => (req: Request, res: Response, next: NextFunction) => {

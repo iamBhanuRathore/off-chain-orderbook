@@ -161,6 +161,18 @@ impl MatchingEngine {
             OrderType::Market => self.process_market_order(order),
         }
     }
+    pub fn get_order_by_id(&self, order_id: Uuid) -> Option<Order> {
+        if let Some((side, price)) = self.order_map.get(&order_id) {
+            let book = match side {
+                OrderSide::Buy => self.bids.get(&Reverse(*price)),
+                OrderSide::Sell => self.asks.get(price),
+            };
+            if let Some(level) = book {
+                return level.orders.iter().find(|o| o.id == order_id).cloned();
+            }
+        }
+        None
+    }
 
     pub fn cancel_order(&mut self, order_id: Uuid) -> (Result<Order, String>, Vec<OrderBookDelta>) {
         let mut deltas = Vec::new();
@@ -409,7 +421,6 @@ impl MatchingEngine {
             timestamp: Utc::now(),
         }
     }
-
     pub fn get_last_traded_price(&self) -> Option<Decimal> {
         self.last_traded_price
     }

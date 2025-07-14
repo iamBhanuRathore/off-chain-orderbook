@@ -4,7 +4,11 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "bun --watch run src/server.ts"
+    "dev": "bun --watch run src/server.ts",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:seed": "bun prisma/seed.ts",
+    "prisma:studio": "bun prisma studio"
   },
   "devDependencies": {
     "@types/bun": "latest",
@@ -16,6 +20,7 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@faker-js/faker": "^9.9.0",
     "@prisma/client": "^6.11.1",
     "cors": "^2.8.5",
     "express": "^5.1.0",

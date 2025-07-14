@@ -26,6 +26,7 @@ pub struct OrderConsumer {
     cancel_queue_key: String,
     snapshot_request_queue_key: String,
     trade_queue_key: String,
+    processed_orders_queue_key: String,
     ltp_key: String,
     delta_channel_key: String,
     bids_orderbook_key: String,
@@ -41,6 +42,7 @@ impl OrderConsumer {
         order_queue_key: String,
         cancel_queue_key: String,
         trade_queue_key: String,
+        processed_orders_queue_key: String,
         ltp_key: String,
         snapshot_key: String, // We'll use this for snapshot requests
         delta_channel_key: String,
@@ -62,6 +64,7 @@ impl OrderConsumer {
             cancel_queue_key,
             snapshot_request_queue_key,
             trade_queue_key,
+            processed_orders_queue_key,
             ltp_key,
             delta_channel_key,
             bids_orderbook_key,
@@ -80,6 +83,19 @@ impl OrderConsumer {
                 // PUBLISH is a fire-and-forget broadcast
                 let _: Result<(), _> = con.publish(&self.delta_channel_key, delta_json).await;
             }
+        }
+    }
+    async fn publish_processed_order(&self, order: &Order) {
+        if let Ok(order_json) = serde_json::to_string(order) {
+            let mut con = self.redis_client.clone();
+            let _: Result<(), _> = con
+                .lpush(&self.processed_orders_queue_key, order_json)
+                .await;
+        } else {
+            eprintln!(
+                "[{}] Failed to serialize processed order for DB queue",
+                self.symbol
+            );
         }
     }
 
@@ -182,8 +198,9 @@ impl OrderConsumer {
                 Ok(Some((queue, data_json))) => {
                     println!("[{}] Received command from queue '{}'", self.symbol, queue);
 
+                    // Handle snapshot requests separately as they don't lock the main engine
+                    // or produce trades/deltas in the same way.
                     if queue == self.snapshot_request_queue_key {
-                        // Handle snapshot request separately
                         if let Ok(snapshot_request) =
                             serde_json::from_str::<EngineCommand>(&data_json)
                         {
@@ -193,47 +210,75 @@ impl OrderConsumer {
                                 self.handle_snapshot_request(response_channel).await;
                             }
                         }
-                        continue;
+                        continue; // Go to the next loop iteration
                     }
 
+                    // Process NewOrder and CancelOrder commands
                     match serde_json::from_str::<EngineCommand>(&data_json) {
                         Ok(command) => {
+                            // These variables will hold the results from the engine
                             let (trades, deltas);
-                            let mut engine_guard = self.engine.lock().await;
+                            // This will hold the original order for logging, if applicable
+                            let mut original_order: Option<Order> = None;
 
-                            match command {
-                                EngineCommand::NewOrder(order) => {
-                                    println!("[{}] Processing NewOrder {}", self.symbol, order.id);
-                                    (trades, deltas) = engine_guard.add_order(order);
-                                }
-                                EngineCommand::CancelOrder { order_id } => {
-                                    println!(
-                                        "[{}] Processing CancelOrder {}",
-                                        self.symbol, order_id
-                                    );
-                                    let (result, cancel_deltas) =
-                                        engine_guard.cancel_order(order_id);
-                                    if let Err(e) = result {
-                                        eprintln!("[{}] {}", self.symbol, e);
+                            // Lock the engine for the shortest time possible
+                            {
+                                let mut engine_guard = self.engine.lock().await;
+
+                                match command {
+                                    EngineCommand::NewOrder(order) => {
+                                        println!(
+                                            "[{}] Processing NewOrder {}",
+                                            self.symbol, order.id
+                                        );
+
+                                        // Clone the original order so we can log it after processing
+                                        original_order = Some(order.clone());
+
+                                        // Pass ownership of the order to the engine
+                                        (trades, deltas) = engine_guard.add_order(order);
                                     }
-                                    trades = Vec::new();
-                                    deltas = cancel_deltas;
+                                    EngineCommand::CancelOrder { order_id } => {
+                                        println!(
+                                            "[{}] Processing CancelOrder {}",
+                                            self.symbol, order_id
+                                        );
+                                        let (result, cancel_deltas) =
+                                            engine_guard.cancel_order(order_id);
+
+                                        // Check if the cancellation was successful
+                                        if let Err(e) = result {
+                                            eprintln!("[{}] {}", self.symbol, e);
+                                        }
+
+                                        trades = Vec::new(); // No trades on a cancellation
+                                        deltas = cancel_deltas;
+                                    }
+                                    // This case is handled above, but included for completeness
+                                    EngineCommand::SnapshotRequest { .. } => {
+                                        trades = Vec::new();
+                                        deltas = Vec::new();
+                                    }
                                 }
-                                EngineCommand::SnapshotRequest { .. } => {
-                                    // This shouldn't happen here, but handle gracefully
-                                    trades = Vec::new();
-                                    deltas = Vec::new();
-                                }
+                            } // The engine lock is automatically released here by `drop(engine_guard)`
+
+                            // --- Perform all network-based publishing concurrently ---
+                            if let Some(order_to_log) = original_order {
+                                // This branch is for `NewOrder` commands
+                                tokio::join!(
+                                    self.publish_processed_order(&order_to_log),
+                                    self.publish_deltas(deltas.clone()),
+                                    self.update_redis_orderbook(&deltas),
+                                    self.publish_trades_and_ltp(trades)
+                                );
+                            } else {
+                                // This branch is for `CancelOrder` and other commands
+                                tokio::join!(
+                                    self.publish_deltas(deltas.clone()),
+                                    self.update_redis_orderbook(&deltas),
+                                    self.publish_trades_and_ltp(trades)
+                                );
                             }
-
-                            drop(engine_guard);
-
-                            // Publish results in parallel
-                            tokio::join!(
-                                self.publish_deltas(deltas.clone()),
-                                self.update_redis_orderbook(&deltas),
-                                self.publish_trades_and_ltp(trades)
-                            );
 
                             println!("[{}] Command processed.", self.symbol);
                         }
@@ -245,7 +290,7 @@ impl OrderConsumer {
                         }
                     }
                 }
-                Ok(None) => continue, // Should not happen with 0.0 timeout
+                Ok(None) => continue, // Should not happen with a 0.0 timeout, but safe to have
                 Err(e) => {
                     eprintln!(
                         "[{}] Error from Redis: {}. Retrying in 2s...",

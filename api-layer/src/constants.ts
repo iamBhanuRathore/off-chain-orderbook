@@ -21,3 +21,5 @@ export const getLtpKey = (symbol: string): string => `orderbook:ltp:${getSymbolK
 export const getBidsKey = (symbol: string): string => `orderbook:bids:${getSymbolKeyPart(symbol)}`;
 
 export const getAsksKey = (symbol: string): string => `orderbook:asks:${getSymbolKeyPart(symbol)}`;
+
+export const feePercentage = "0.2";

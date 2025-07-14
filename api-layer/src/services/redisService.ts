@@ -1,38 +1,50 @@
 // src/services/redisService.ts
 
-import { createClient } from "redis";
+import { createClient, type RedisClientType } from "redis";
 import * as keys from "../constants";
-import type { OrderPayload, OrderBookLevel, Trade } from "../types";
+import type { OrderPayload } from "../middleware/validator";
+import type { OrderBookLevel, Trade } from "../types";
+import { db } from "../lib/db";
+import { createOrder, cancelOrder as cancelOrderDb } from "./orderService";
+import { getTradesByMarket } from "./tradeService";
+import { getMarketBySymbol } from "./marketService";
+import { Prisma } from "@/generated/prisma";
+import { seedOrdersToDb } from "@/services/seedService";
 
-const redisClient = createClient({ url: process.env.REDIS_URL });
-
+const redisClient: RedisClientType = createClient({ url: process.env.REDIS_URL });
+// export type RedisClientType = typeof redisClient;
 redisClient.on("error", (err) => console.log("Redis Client Error", err));
 
 (async () => {
   await redisClient.connect();
+  seedOrdersToDb(redisClient);
   console.log("Redis client connected successfully.");
 })();
 
 export const submitOrder = async (orderData: OrderPayload) => {
-  const { symbol } = orderData;
-  const queueName = keys.getOrderQueue(symbol);
+  const createdOrder = await createOrder(orderData);
+
+  const queueName = keys.getOrderQueue(orderData.symbol);
 
   const command = {
     command: "NewOrder",
     payload: {
-      user_id: orderData.userId,
-      order_type: orderData.orderType,
-      side: orderData.side,
-      price: orderData.price || "0",
-      quantity: orderData.quantity,
+      order_id: createdOrder.id,
+      user_id: createdOrder.userId,
+      order_type: createdOrder.orderType,
+      side: createdOrder.side,
+      price: createdOrder.price.toString(),
+      quantity: createdOrder.quantity.toString(),
     },
   };
 
   await redisClient.lPush(queueName, JSON.stringify(command));
-  return { status: "submitted", details: command.payload };
+  return createdOrder;
 };
 
 export const cancelOrder = async (symbol: string, orderId: string) => {
+  const updatedOrder = await cancelOrderDb(orderId);
+
   const queueName = keys.getCancelQueue(symbol);
 
   const command = {
@@ -41,48 +53,43 @@ export const cancelOrder = async (symbol: string, orderId: string) => {
   };
 
   await redisClient.lPush(queueName, JSON.stringify(command));
-  return { status: "cancellation_submitted", order_id: orderId };
+  return updatedOrder;
 };
 
 export const getOrderBook = async (symbol: string): Promise<{ bids: OrderBookLevel[]; asks: OrderBookLevel[] }> => {
-  const bidsKey = keys.getBidsKey(symbol);
-  const asksKey = keys.getAsksKey(symbol);
+  const snapshot = await db.orderBookSnapshot.findFirst({
+    where: { market: symbol },
+    orderBy: { timestamp: "desc" },
+  });
 
-  const parseLevels = (levels: string[]): OrderBookLevel[] => {
-    const priceMap = new Map<string, string>();
+  if (!snapshot) {
+    return { bids: [], asks: [] };
+  }
 
-    levels.forEach((levelStr) => {
-      const [price = "", quantity = ""] = levelStr.split(":");
-      if (price && quantity) {
-        const currentQty = priceMap.get(price);
-        if (!currentQty || parseFloat(quantity) > parseFloat(currentQty)) {
-          priceMap.set(price, quantity);
-        }
-      }
-    });
+  // The schema stores bids and asks as JSON, so we parse it.
+  // Add type safety check
+  const bids = Array.isArray(snapshot.bids) ? (snapshot.bids as unknown as OrderBookLevel[]) : [];
+  const asks = Array.isArray(snapshot.asks) ? (snapshot.asks as unknown as OrderBookLevel[]) : [];
 
-    return Array.from(priceMap.entries()).map(([price, quantity]) => ({
-      price,
-      quantity,
-    }));
-  };
-
-  const [bidLevels, askLevels] = await Promise.all([redisClient.zRange(bidsKey, 0, 49, { REV: true }), redisClient.zRange(asksKey, 0, 49)]);
-  console.log(bidLevels, askLevels);
-  return {
-    bids: parseLevels(bidLevels),
-    asks: parseLevels(askLevels),
-  };
+  return { bids, asks };
 };
 
 export const getLastTradedPrice = async (symbol: string): Promise<{ symbol: string; last_price: string | null }> => {
-  const ltpKey = keys.getLtpKey(symbol);
-  const ltp = await redisClient.get(ltpKey);
-  return { symbol, last_price: ltp || null };
+  const market = await getMarketBySymbol(symbol);
+  return {
+    symbol,
+    last_price: market ? new Prisma.Decimal(market.lastPrice || 0).toString() : null,
+  };
 };
 
 export const getRecentTrades = async (symbol: string): Promise<Trade[]> => {
-  const tradesKey = keys.getTradesKey(symbol);
-  const tradeStrings = await redisClient.lRange(tradesKey, 0, 49);
-  return tradeStrings.map((trade) => JSON.parse(trade));
+  const trades = await getTradesByMarket(symbol);
+
+  return trades.map((trade) => ({
+    ...trade,
+    price: trade.price.toString(),
+    quantity: trade.quantity.toString(),
+    fee: trade.fee.toString(),
+    timestamp: trade.timestamp.toISOString(),
+  }));
 };

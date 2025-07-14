@@ -1,13 +1,5 @@
 // src/types/index.ts
-
-export interface OrderPayload {
-  symbol: string;
-  userId: number;
-  orderType: 'Limit' | 'Market';
-  side: 'Buy' | 'Sell';
-  quantity: string;
-  price?: string; // Optional because it's not required for Market orders
-}
+import type { Side } from "../generated/prisma/client";
 
 export interface OrderBookLevel {
   price: string;
@@ -16,9 +8,23 @@ export interface OrderBookLevel {
 
 export interface Trade {
   id: string;
-  taker_order_id: string;
-  maker_order_id: string;
+  market: string;
   price: string;
   quantity: string;
+  takerSide: Side;
+  buyOrderId: string;
+  sellOrderId: string;
+  buyerId: string;
+  sellerId: string;
+  fee: string;
+  feeAsset: string;
   timestamp: string;
-};
+}
+
+declare global {
+  namespace Express {
+    interface Request {
+      userId?: string;
+    }
+  }
+}

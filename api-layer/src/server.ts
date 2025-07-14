@@ -5,7 +5,6 @@ import cors from "cors";
 import marketRoutes from "./routes/marketRoutes";
 import userRoutes from "./routes/userRoutes";
 import { errorHandler } from "./middleware/errorHandler";
-import { prisma } from "./lib/db";
 
 const app: Express = express();
 const PORT = process.env.PORT || 3000;
