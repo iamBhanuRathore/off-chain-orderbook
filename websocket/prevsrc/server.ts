@@ -242,7 +242,7 @@ class TradingWebSocketServer {
       const order = {
         command: "NewOrder",
         payload: {
-          user_id: parseInt(user_id),
+          user_id: user_id,
           order_type,
           side,
           price: price || "0",

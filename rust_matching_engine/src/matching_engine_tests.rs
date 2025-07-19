@@ -9,13 +9,13 @@ mod matching_engine_tests {
     fn setup() -> MatchingEngine {
         MatchingEngine::new("TEST_SYMBOL".to_string())
     }
-
+    // I have changes in here user_id from 1 to UUid
     #[test]
     fn test_add_limit_buy_order_no_match() {
         let mut engine = setup();
         let order = Order {
             id: Uuid::new_v4(),
-            user_id: 1,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Buy,
             price: dec!(100),
@@ -43,7 +43,7 @@ mod matching_engine_tests {
         let mut engine = setup();
         let order = Order {
             id: Uuid::new_v4(),
-            user_id: 1,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Sell,
             price: dec!(100),
@@ -71,7 +71,7 @@ mod matching_engine_tests {
         let mut engine = setup();
         let sell_order = Order {
             id: Uuid::new_v4(),
-            user_id: 1,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Sell,
             price: dec!(100),
@@ -82,7 +82,7 @@ mod matching_engine_tests {
 
         let buy_order = Order {
             id: Uuid::new_v4(),
-            user_id: 2,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Buy,
             price: dec!(100),
@@ -114,7 +114,7 @@ mod matching_engine_tests {
         let mut engine = setup();
         let sell_order = Order {
             id: Uuid::new_v4(),
-            user_id: 1,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Sell,
             price: dec!(100),
@@ -125,7 +125,7 @@ mod matching_engine_tests {
 
         let buy_order = Order {
             id: Uuid::new_v4(),
-            user_id: 2,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Buy,
             price: dec!(100),
@@ -157,7 +157,7 @@ mod matching_engine_tests {
         let mut engine = setup();
         let sell_order = Order {
             id: Uuid::new_v4(),
-            user_id: 1,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Sell,
             price: dec!(100),
@@ -168,7 +168,7 @@ mod matching_engine_tests {
 
         let buy_order = Order {
             id: Uuid::new_v4(),
-            user_id: 2,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Buy,
             price: dec!(100),
@@ -205,7 +205,7 @@ mod matching_engine_tests {
         let mut engine = setup();
         let sell_order_1 = Order {
             id: Uuid::new_v4(),
-            user_id: 1,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Sell,
             price: dec!(100),
@@ -214,7 +214,7 @@ mod matching_engine_tests {
         };
         let sell_order_2 = Order {
             id: Uuid::new_v4(),
-            user_id: 1,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Sell,
             price: dec!(100),
@@ -226,7 +226,7 @@ mod matching_engine_tests {
 
         let buy_order = Order {
             id: Uuid::new_v4(),
-            user_id: 2,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Buy,
             price: dec!(100),
@@ -261,7 +261,7 @@ mod matching_engine_tests {
         let mut engine = setup();
         let sell_order_1 = Order {
             id: Uuid::new_v4(),
-            user_id: 1,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Sell,
             price: dec!(100),
@@ -270,7 +270,7 @@ mod matching_engine_tests {
         };
         let sell_order_2 = Order {
             id: Uuid::new_v4(),
-            user_id: 1,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Sell,
             price: dec!(101),
@@ -282,7 +282,7 @@ mod matching_engine_tests {
 
         let buy_market_order = Order {
             id: Uuid::new_v4(),
-            user_id: 2,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Market,
             side: OrderSide::Buy,
             price: dec!(0), // Market orders don't have a price
@@ -316,7 +316,7 @@ mod matching_engine_tests {
         let mut engine = setup();
         let buy_order_1 = Order {
             id: Uuid::new_v4(),
-            user_id: 1,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Buy,
             price: dec!(100),
@@ -325,7 +325,7 @@ mod matching_engine_tests {
         };
         let buy_order_2 = Order {
             id: Uuid::new_v4(),
-            user_id: 1,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Buy,
             price: dec!(99),
@@ -337,7 +337,7 @@ mod matching_engine_tests {
 
         let sell_market_order = Order {
             id: Uuid::new_v4(),
-            user_id: 2,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Market,
             side: OrderSide::Sell,
             price: dec!(0),
@@ -374,7 +374,7 @@ mod matching_engine_tests {
         let mut engine = setup();
         let order = Order {
             id: Uuid::new_v4(),
-            user_id: 1,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Buy,
             price: dec!(100),
@@ -418,7 +418,7 @@ mod matching_engine_tests {
         let mut engine = setup();
         let sell_order = Order {
             id: Uuid::new_v4(),
-            user_id: 1,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Sell,
             price: dec!(100),
@@ -429,7 +429,7 @@ mod matching_engine_tests {
 
         let buy_order = Order {
             id: Uuid::new_v4(),
-            user_id: 2,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Buy,
             price: dec!(100),
@@ -457,7 +457,7 @@ mod matching_engine_tests {
         let mut engine = setup();
         engine.add_order(Order {
             id: Uuid::new_v4(),
-            user_id: 1,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Buy,
             price: dec!(100),
@@ -466,7 +466,7 @@ mod matching_engine_tests {
         });
         engine.add_order(Order {
             id: Uuid::new_v4(),
-            user_id: 2,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Buy,
             price: dec!(99),
@@ -475,7 +475,7 @@ mod matching_engine_tests {
         });
         engine.add_order(Order {
             id: Uuid::new_v4(),
-            user_id: 3,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Sell,
             price: dec!(101),
@@ -484,7 +484,7 @@ mod matching_engine_tests {
         });
         engine.add_order(Order {
             id: Uuid::new_v4(),
-            user_id: 4,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Sell,
             price: dec!(102),
@@ -513,7 +513,7 @@ mod matching_engine_tests {
         let mut engine = setup();
         let sell_order = Order {
             id: Uuid::new_v4(),
-            user_id: 1,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Sell,
             price: dec!(100),
@@ -524,7 +524,7 @@ mod matching_engine_tests {
 
         let buy_order = Order {
             id: Uuid::new_v4(),
-            user_id: 2,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Buy,
             price: dec!(100),
@@ -541,7 +541,7 @@ mod matching_engine_tests {
         let mut engine = setup();
         let buy_market_order = Order {
             id: Uuid::new_v4(),
-            user_id: 1,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Market,
             side: OrderSide::Buy,
             price: dec!(0),
@@ -560,7 +560,7 @@ mod matching_engine_tests {
         let mut engine = setup();
         let order = Order {
             id: Uuid::new_v4(),
-            user_id: 1,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Buy,
             price: dec!(100),
@@ -580,7 +580,7 @@ mod matching_engine_tests {
         let mut engine = setup();
         let order = Order {
             id: Uuid::new_v4(),
-            user_id: 1,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Market,
             side: OrderSide::Buy,
             price: dec!(0),
@@ -599,7 +599,7 @@ mod matching_engine_tests {
         // Sell orders
         engine.add_order(Order {
             id: Uuid::new_v4(),
-            user_id: 1,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Sell,
             price: dec!(100),
@@ -608,7 +608,7 @@ mod matching_engine_tests {
         });
         engine.add_order(Order {
             id: Uuid::new_v4(),
-            user_id: 2,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Sell,
             price: dec!(101),
@@ -617,7 +617,7 @@ mod matching_engine_tests {
         });
         engine.add_order(Order {
             id: Uuid::new_v4(),
-            user_id: 3,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Sell,
             price: dec!(102),
@@ -628,7 +628,7 @@ mod matching_engine_tests {
         // Buy order that crosses multiple levels
         let buy_order = Order {
             id: Uuid::new_v4(),
-            user_id: 4,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Buy,
             price: dec!(102),
@@ -670,7 +670,7 @@ mod matching_engine_tests {
         // Add some initial orders
         let sell_100_q10 = Order {
             id: Uuid::new_v4(),
-            user_id: 1,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Sell,
             price: dec!(100),
@@ -679,7 +679,7 @@ mod matching_engine_tests {
         };
         let sell_101_q5 = Order {
             id: Uuid::new_v4(),
-            user_id: 2,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Sell,
             price: dec!(101),
@@ -688,7 +688,7 @@ mod matching_engine_tests {
         };
         let buy_99_q15 = Order {
             id: Uuid::new_v4(),
-            user_id: 3,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Buy,
             price: dec!(99),
@@ -727,7 +727,7 @@ mod matching_engine_tests {
         // Add a new buy order that matches sell_101_q5
         let buy_101_q5 = Order {
             id: Uuid::new_v4(),
-            user_id: 4,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Buy,
             price: dec!(101),
@@ -758,7 +758,7 @@ mod matching_engine_tests {
         let mut engine = setup();
         let order1 = Order {
             id: Uuid::new_v4(),
-            user_id: 1,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Buy,
             price: dec!(100),
@@ -767,7 +767,7 @@ mod matching_engine_tests {
         };
         let order2 = Order {
             id: Uuid::new_v4(),
-            user_id: 2,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Buy,
             price: dec!(100),
@@ -788,7 +788,7 @@ mod matching_engine_tests {
         let mut engine = setup();
         let order1 = Order {
             id: Uuid::new_v4(),
-            user_id: 1,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Sell,
             price: dec!(100),
@@ -798,7 +798,7 @@ mod matching_engine_tests {
         std::thread::sleep(std::time::Duration::from_millis(2)); // Ensure different timestamps
         let order2 = Order {
             id: Uuid::new_v4(),
-            user_id: 2,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Sell,
             price: dec!(100),
@@ -810,7 +810,7 @@ mod matching_engine_tests {
 
         let buy_order = Order {
             id: Uuid::new_v4(),
-            user_id: 3,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Buy,
             price: dec!(100),
@@ -831,7 +831,7 @@ mod matching_engine_tests {
         let mut engine = setup();
         let sell_order = Order {
             id: Uuid::new_v4(),
-            user_id: 1,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Sell,
             price: dec!(100),
@@ -842,7 +842,7 @@ mod matching_engine_tests {
 
         let buy_market_order = Order {
             id: Uuid::new_v4(),
-            user_id: 2,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Market,
             side: OrderSide::Buy,
             price: dec!(0),
@@ -871,7 +871,7 @@ mod matching_engine_tests {
         let mut engine = setup();
         let sell_order = Order {
             id: Uuid::new_v4(),
-            user_id: 1,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Sell,
             price: dec!(105),
@@ -882,7 +882,7 @@ mod matching_engine_tests {
 
         let buy_order = Order {
             id: Uuid::new_v4(),
-            user_id: 2,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Buy,
             price: dec!(110), // Price higher than existing sell
@@ -918,7 +918,7 @@ mod matching_engine_tests {
         let mut engine = setup();
         let sell_order = Order {
             id: Uuid::new_v4(),
-            user_id: 1,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Sell,
             price: dec!(100),
@@ -927,7 +927,7 @@ mod matching_engine_tests {
         };
         let buy_order = Order {
             id: Uuid::new_v4(),
-            user_id: 2,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Buy,
             price: dec!(100),
@@ -948,7 +948,7 @@ mod matching_engine_tests {
         let mut engine = setup();
         let order1 = Order {
             id: Uuid::new_v4(),
-            user_id: 1,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Buy,
             price: dec!(100),
@@ -957,7 +957,7 @@ mod matching_engine_tests {
         };
         let order2 = Order {
             id: Uuid::new_v4(),
-            user_id: 2,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Buy,
             price: dec!(100),
@@ -981,7 +981,7 @@ mod matching_engine_tests {
         let mut engine = setup();
         engine.add_order(Order {
             id: Uuid::new_v4(),
-            user_id: 1,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Sell,
             price: dec!(102),
@@ -990,7 +990,7 @@ mod matching_engine_tests {
         });
         engine.add_order(Order {
             id: Uuid::new_v4(),
-            user_id: 2,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Sell,
             price: dec!(100),
@@ -1000,7 +1000,7 @@ mod matching_engine_tests {
 
         let buy_market_order = Order {
             id: Uuid::new_v4(),
-            user_id: 3,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Market,
             side: OrderSide::Buy,
             price: dec!(0),
@@ -1019,7 +1019,7 @@ mod matching_engine_tests {
         let mut engine = setup();
         engine.add_order(Order {
             id: Uuid::new_v4(),
-            user_id: 1,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Sell,
             price: dec!(105),
@@ -1028,7 +1028,7 @@ mod matching_engine_tests {
         });
         engine.add_order(Order {
             id: Uuid::new_v4(),
-            user_id: 2,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Buy,
             price: dec!(95),
@@ -1038,7 +1038,7 @@ mod matching_engine_tests {
 
         let buy_order_no_match = Order {
             id: Uuid::new_v4(),
-            user_id: 3,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Buy,
             price: dec!(100), // Between 95 and 105, but no matching sell at 100
@@ -1072,7 +1072,7 @@ mod matching_engine_tests {
         // Add a sell order at 50010
         let sell_order = Order {
             id: Uuid::new_v4(),
-            user_id: 1,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Sell,
             price: dec!(50010),
@@ -1084,7 +1084,7 @@ mod matching_engine_tests {
         // Add a buy order at 50050
         let buy_order = Order {
             id: Uuid::new_v4(),
-            user_id: 2,
+            user_id: Uuid::new_v4(),
             order_type: OrderType::Limit,
             side: OrderSide::Buy,
             price: dec!(50050),
@@ -1108,7 +1108,7 @@ mod matching_engine_tests {
     //     let mut engine = setup();
     //     let sell_order = Order {
     //         id: Uuid::new_v4(),
-    //         user_id: 1,
+    //         user_id: Uuid::new_v4(),
     //         order_type: OrderType::Limit,
     //         side: OrderSide::Sell,
     //         price: dec!(100),
@@ -1117,7 +1117,7 @@ mod matching_engine_tests {
     //     };
     //     let buy_order = Order {
     //         id: Uuid::new_v4(),
-    //         user_id: 2,
+    //         user_id: Uuid::new_v4(),
     //         order_type: OrderType::Limit,
     //         side: OrderSide::Buy,
     //         price: dec!(100),
@@ -1138,7 +1138,7 @@ mod matching_engine_tests {
     //     let mut engine = setup();
     //     let order1 = Order {
     //         id: Uuid::new_v4(),
-    //         user_id: 1,
+    //         user_id: Uuid::new_v4(),
     //         order_type: OrderType::Limit,
     //         side: OrderSide::Buy,
     //         price: dec!(100),
@@ -1147,7 +1147,7 @@ mod matching_engine_tests {
     //     };
     //     let order2 = Order {
     //         id: Uuid::new_v4(),
-    //         user_id: 2,
+    //         user_id: Uuid::new_v4(),
     //         order_type: OrderType::Limit,
     //         side: OrderSide::Buy,
     //         price: dec!(100),
@@ -1171,7 +1171,7 @@ mod matching_engine_tests {
     //     let mut engine = setup();
     //     engine.add_order(Order {
     //         id: Uuid::new_v4(),
-    //         user_id: 1,
+    //         user_id: Uuid::new_v4(),
     //         order_type: OrderType::Limit,
     //         side: OrderSide::Sell,
     //         price: dec!(102),
@@ -1180,7 +1180,7 @@ mod matching_engine_tests {
     //     });
     //     engine.add_order(Order {
     //         id: Uuid::new_v4(),
-    //         user_id: 2,
+    //         user_id: Uuid::new_v4(),
     //         order_type: OrderType::Limit,
     //         side: OrderSide::Sell,
     //         price: dec!(100),
@@ -1190,7 +1190,7 @@ mod matching_engine_tests {
 
     //     let buy_market_order = Order {
     //         id: Uuid::new_v4(),
-    //         user_id: 3,
+    //         user_id: Uuid::new_v4(),
     //         order_type: OrderType::Market,
     //         side: OrderSide::Buy,
     //         price: dec!(0),
@@ -1209,7 +1209,7 @@ mod matching_engine_tests {
     //     let mut engine = setup();
     //     engine.add_order(Order {
     //         id: Uuid::new_v4(),
-    //         user_id: 1,
+    //         user_id: Uuid::new_v4(),
     //         order_type: OrderType::Limit,
     //         side: OrderSide::Sell,
     //         price: dec!(105),
@@ -1218,7 +1218,7 @@ mod matching_engine_tests {
     //     });
     //     engine.add_order(Order {
     //         id: Uuid::new_v4(),
-    //         user_id: 2,
+    //         user_id: Uuid::new_v4(),
     //         order_type: OrderType::Limit,
     //         side: OrderSide::Buy,
     //         price: dec!(95),
@@ -1228,7 +1228,7 @@ mod matching_engine_tests {
 
     //     let buy_order_no_match = Order {
     //         id: Uuid::new_v4(),
-    //         user_id: 3,
+    //         user_id: Uuid::new_v4(),
     //         order_type: OrderType::Limit,
     //         side: OrderSide::Buy,
     //         price: dec!(100), // Between 95 and 105, but no matching sell at 100

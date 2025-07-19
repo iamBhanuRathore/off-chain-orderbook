@@ -6,6 +6,7 @@ use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};
 use std::cmp::{Ordering, Reverse};
 use std::collections::{BTreeMap, HashMap, VecDeque};
+// use cuid2::create_id
 use uuid::Uuid;
 
 // --- Core Enums and Structs ---
@@ -25,7 +26,7 @@ pub enum OrderSide {
 pub struct Order {
     #[serde(default = "Uuid::new_v4")]
     pub id: Uuid,
-    pub user_id: u64,
+    pub user_id: Uuid,
     pub order_type: OrderType,
     pub side: OrderSide,
     #[serde(with = "rust_decimal::serde::str")]

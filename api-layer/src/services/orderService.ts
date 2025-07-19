@@ -3,22 +3,24 @@
 import type { Order } from "@/generated/prisma";
 import { Prisma } from "@/generated/prisma";
 import { db } from "@/lib/db";
-import type { OrderPayload } from "@/middleware/validator";
+import type { OrderSchema } from "@/types";
 
-export const createOrder = async (data: OrderPayload): Promise<Order> => {
-  const remaining = new Prisma.Decimal(data.quantity);
+export const createOrder = async (data: OrderSchema, market: string): Promise<Order> => {
   return db.order.create({
     data: {
-      ...data,
+      userId: data.user_id,
+      orderType: data.order_type,
+      side: data.side,
+      market: market,
       price: new Prisma.Decimal(data.price || 0),
       quantity: new Prisma.Decimal(data.quantity),
-      remaining,
-      filled: new Prisma.Decimal(0),
+      remaining: new Prisma.Decimal(data.quantity),
+      filled: 0,
       status: "Open",
-      // market:
     },
   });
 };
+// export const createTrade =
 
 export const getOrderById = async (id: string): Promise<Order | null> => {
   return db.order.findUnique({

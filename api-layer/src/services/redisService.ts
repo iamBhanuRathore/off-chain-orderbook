@@ -18,28 +18,27 @@ redisClient.on("error", (err) => console.log("Redis Client Error", err));
 (async () => {
   await redisClient.connect();
   seedOrdersToDb(redisClient);
+  // seedTradesToDb(redisClient);
   console.log("Redis client connected successfully.");
 })();
 
 export const submitOrder = async (orderData: OrderPayload) => {
-  const createdOrder = await createOrder(orderData);
+  // const createdOrder = await createOrder(orderData);
 
   const queueName = keys.getOrderQueue(orderData.symbol);
 
   const command = {
     command: "NewOrder",
     payload: {
-      order_id: createdOrder.id,
-      user_id: createdOrder.userId,
-      order_type: createdOrder.orderType,
-      side: createdOrder.side,
-      price: createdOrder.price.toString(),
-      quantity: createdOrder.quantity.toString(),
+      user_id: orderData.userId,
+      order_type: orderData.orderType,
+      side: orderData.side,
+      price: orderData.price ? orderData.price.toString() : "0",
+      quantity: orderData.quantity.toString(),
     },
   };
-
   await redisClient.lPush(queueName, JSON.stringify(command));
-  return createdOrder;
+  return command;
 };
 
 export const cancelOrder = async (symbol: string, orderId: string) => {

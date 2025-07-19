@@ -1,5 +1,7 @@
 // src/types/index.ts
+import type { orderSchema } from "@/schemas/orderSchema";
 import type { Side } from "../generated/prisma/client";
+import type z from "zod";
 
 export interface OrderBookLevel {
   price: string;
@@ -28,3 +30,5 @@ declare global {
     }
   }
 }
+
+export type OrderSchema = z.infer<typeof orderSchema>;

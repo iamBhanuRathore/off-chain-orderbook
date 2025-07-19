@@ -9,7 +9,7 @@ generator client {
 }
 
 model User {
-  id             String        @id @default(cuid())
+  id             String        @id @default(uuid())
   email          String        @unique
   password       String
   // apiKey      String        @unique
@@ -37,7 +37,7 @@ model Asset {
 }
 
 model Market {
-  id          String   @id @default(cuid())
+  id          String   @id @default(uuid())
   symbol      String   @unique // e.g., "BTC_USDT"
   baseAsset   String // e.g., "BTC"
   quoteAsset  String // e.g., "USDT"
@@ -57,7 +57,7 @@ model Market {
 }
 
 model Balance {
-  id        String   @id @default(cuid())
+  id        String   @id @default(uuid())
   userId    String
   asset     String
   amount    BigInt   @default(0)
@@ -72,7 +72,7 @@ model Balance {
 }
 
 model Fee {
-  id          String   @id @default(cuid())
+  id          String   @id @default(uuid())
   market      String
   makerFeeBps Int // e.g. 5 for 0.05%
   takerFeeBps Int // e.g. 10 for 0.1% e.g. 1 for 0.01%
@@ -110,7 +110,7 @@ enum TimeInForce {
 }
 
 model Order {
-  id            String      @id @default(cuid())
+  id            String      @id @default(uuid())
   userId        String
   market        String
   price         Decimal // for Market orders, you can ignore or set to 0
@@ -140,7 +140,7 @@ model Order {
 }
 
 model Trade {
-  id          String   @id @default(cuid())
+  id          String   @id @default(uuid())
   market      String
   price       Decimal
   quantity    Decimal
@@ -166,7 +166,7 @@ model Trade {
 }
 
 model OrderBookSnapshot {
-  id        String   @id @default(cuid())
+  id        String   @id @default(uuid())
   market    String
   bids      Json // [{price: "100", quantity: "1.5"}, ...]
   asks      Json // [{price: "101", quantity: "2.0"}, ...]
@@ -191,7 +191,7 @@ enum TransactionStatus {
 }
 
 model Transaction {
-  id        String            @id @default(cuid())
+  id        String            @id @default(uuid())
   userId    String
   type      TransactionType
   asset     String
@@ -208,7 +208,7 @@ model Transaction {
 }
 
 model AuditLog {
-  id        String   @id @default(cuid())
+  id        String   @id @default(uuid())
   userId    String?
   action    String
   details   Json
@@ -220,7 +220,7 @@ model AuditLog {
 
 // Market data and analytics
 model MarketStats {
-  id                    String   @id @default(cuid())
+  id                    String   @id @default(uuid())
   market                String
   lastPrice             Decimal
   volume24h             Decimal
@@ -251,7 +251,7 @@ enum CandlestickInterval {
 
 // Candlestick data for charts
 model Candlestick {
-  id        String              @id @default(cuid())
+  id        String              @id @default(uuid())
   market    String
   interval  CandlestickInterval
   openTime  DateTime
