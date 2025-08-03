@@ -5,28 +5,28 @@ import * as keys from "../constants";
 import type { OrderPayload } from "../middleware/validator";
 import type { OrderBookLevel, Trade } from "../types";
 import { db } from "../lib/db";
-import { createOrder, cancelOrder as cancelOrderDb } from "./orderService";
+import { cancelOrderAndUnlockFunds, createOrderWithBalanceLock } from "./orderService";
 import { getTradesByMarket } from "./tradeService";
 import { getMarketBySymbol } from "./marketService";
 import { Prisma } from "@/generated/prisma";
-import { seedOrdersToDb } from "@/services/seedService";
+import { processTradesWorker } from "@/services/seedService";
 
 const redisClient: RedisClientType = createClient({ url: process.env.REDIS_URL });
 // export type RedisClientType = typeof redisClient;
 redisClient.on("error", (err) => console.log("Redis Client Error", err));
 
-(async () => {
+export const connectToRedis = async () => {
   await redisClient.connect();
-  seedOrdersToDb(redisClient);
+  processTradesWorker(redisClient);
+  // seedOrdersToDb(redisClient);
   // seedTradesToDb(redisClient);
   console.log("Redis client connected successfully.");
-})();
+};
 
 export const submitOrder = async (orderData: OrderPayload) => {
-  // const createdOrder = await createOrder(orderData);
+  const createdOrder = await createOrderWithBalanceLock(orderData, orderData.symbol);
 
   const queueName = keys.getOrderQueue(orderData.symbol);
-
   const command = {
     command: "NewOrder",
     payload: {
@@ -42,6 +42,7 @@ export const submitOrder = async (orderData: OrderPayload) => {
 };
 
 export const cancelOrder = async (symbol: string, orderId: string) => {
+  // @ts-ignore
   const updatedOrder = await cancelOrderDb(orderId);
 
   const queueName = keys.getCancelQueue(symbol);
@@ -52,6 +53,7 @@ export const cancelOrder = async (symbol: string, orderId: string) => {
   };
 
   await redisClient.lPush(queueName, JSON.stringify(command));
+  // @ts-ignore
   return updatedOrder;
 };
 

@@ -57,9 +57,12 @@ async fn main() {
             config.quote_asset.to_uppercase()
         );
         let order_queue_name = format!("orderbook:orders:{}", symbol_key_part);
-        let cancel_queue_name = format!("orderbook:cancel:{}", symbol_key_part);
         let trade_queue_name = format!("orderbook:trades:{}", symbol_key_part);
+        let cancel_queue_name = format!("orderbook:cancel:{}", symbol_key_part);
+        // ** --- These two queues are used to seed the db with the trades/orders happen by the matching engine.
         let processed_orders_queue_name = format!("engine:processed_orders:{}", symbol_key_part);
+        let processed_trades_queue_name = format!("engine:processed_trades:{}", symbol_key_part);
+        // ** --- These two queues are used to seed the db with the trades/orders happen by the matching engine.
         let ltp_key_name = format!("orderbook:ltp:{}", symbol_key_part);
         let snapshot_key_name = format!("orderbook:snapshot:{}", symbol_key_part);
         let delta_channel_name = format!("orderbook:deltas:{}", symbol_key_part);
@@ -73,6 +76,14 @@ async fn main() {
         println!(" -> Deltas Channel:     {}", delta_channel_name);
         println!(" -> Redis Bids:         {}", bids_orderbook_key);
         println!(" -> Redis Asks:         {}", asks_orderbook_key);
+        println!(
+            " -> Processed Orders Queue:   {}",
+            processed_orders_queue_name
+        );
+        println!(
+            " -> Processed Trades Queue:   {}",
+            processed_trades_queue_name
+        );
 
         let engine = Arc::new(Mutex::new(MatchingEngine::new(config.symbol.clone())));
 
@@ -83,6 +94,7 @@ async fn main() {
             order_queue_name.clone(),
             cancel_queue_name.clone(),
             trade_queue_name.clone(),
+            processed_trades_queue_name.clone(),
             processed_orders_queue_name.clone(),
             ltp_key_name.clone(),
             snapshot_key_name.clone(),

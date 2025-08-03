@@ -1,77 +1,107 @@
+// src/workers/seeder.ts (or your original filename)
+
 import { db } from "@/lib/db";
 import type { RedisClientType } from "redis";
-import { orderSchema } from "@/schemas/orderSchema";
-import { createOrder } from "@/services/orderService";
+// import { orderSchema } from "@/schemas/orderSchema";
+// IMPORTANT: Import the new transactional function
+import { createOrderWithBalanceLock } from "@/services/orderService";
+// We will need to create a transactional trade processor as well
+import { processTradeInTransaction, type TradeMessage } from "@/services/tradeService"; // Assuming this file is created as per previous examples
+import { orderSchema } from "@/middleware/validator";
 
-export const seedOrdersToDb = async (client: RedisClientType) => {
+/**
+ * Worker to process NEW order requests from a queue.
+ * It uses a reliable queue pattern and a transactional database update to lock funds.
+ */
+export const processNewOrdersWorker = async (client: RedisClientType) => {
   try {
     const markets = await db.market.findMany();
     for (const market of markets) {
-      const queueName = `engine:processed_orders:${market.symbol}`;
-      // run an loop to get the orders from the queue and add them to the db
-      while (true) {
-        const result = await client.brPop(queueName, 0); // 0 means block indefinitely
-        if (result) {
-          const { key, element } = result;
-          const order = JSON.parse(element);
-          console.log("Processing order from queue:", order);
-          const validation = orderSchema.safeParse(order);
+      const mainQueue = `orders:new:${market.symbol}`;
+      const processingQueue = `${mainQueue}:processing`;
+      const deadLetterQueue = `${mainQueue}:dead-letter`;
 
-          if (validation.success) {
-            console.log("Order received from Redis:", validation.data);
-            let res = await createOrder(validation.data, market.symbol);
-            console.log("Order created in DB:", res);
-          } else {
-            console.error("Invalid order received from Redis:", validation.error);
+      console.log(`[OrderWorker] Starting listener on ${mainQueue}`);
+
+      while (true) {
+        let orderJSON: string | null = null;
+        try {
+          // Reliable Queue Pattern: Atomically move message from main to processing queue
+          orderJSON = await client.lMove(mainQueue, processingQueue, "LEFT", "RIGHT");
+
+          if (orderJSON) {
+            const order = JSON.parse(orderJSON);
+            console.log("[OrderWorker] Processing order:", order);
+            const validation = orderSchema.safeParse(order);
+
+            if (validation.success) {
+              // Call the new, safe transactional function
+              await createOrderWithBalanceLock(validation.data, market.symbol);
+
+              // If successful, remove the message from the processing queue
+              await client.lRem(processingQueue, -1, orderJSON);
+            } else {
+              console.error("[OrderWorker] Invalid order schema:", validation.error);
+              throw new Error("Invalid order schema"); // Throw to move to dead-letter
+            }
           }
+        } catch (err: any) {
+          console.error(`[OrderWorker] CRITICAL ERROR processing order: ${err?.message}`);
+          if (orderJSON) {
+            // Move the poisonous message to a dead-letter queue for inspection
+            await client.lMove(processingQueue, deadLetterQueue, "RIGHT", "LEFT");
+          }
+          // Wait a moment to prevent fast-spinning on a persistent error
+          await new Promise((resolve) => setTimeout(resolve, 1000));
         }
       }
     }
   } catch (err) {
-    console.error("Error seeding orders to DB", err);
+    console.error("Error initializing the Orders Worker", err);
   }
 };
 
-export const seedTradesToDb = async (client: RedisClientType) => {
+/**
+ * Worker to process FILLED trades from the matching engine.
+ * It uses a reliable queue pattern and a transactional database update for all parties.
+ */
+export const processTradesWorker = async (client: RedisClientType) => {
   try {
     const markets = await db.market.findMany();
     for (const market of markets) {
-      const queueName = `orderbook:trades:${market.symbol}`;
-      // run an loop to get the trades from the queue and add them to the db
-      while (true) {
-        const result = await client.brPop(queueName, 0); // 0 means block indefinitely
-        if (result) {
-          const { key, element } = result;
-          const trade = JSON.parse(element);
-          console.log("Processing trade from queue:", trade);
-          // Assuming a tradeSchema exists for validation
-          // const validation = tradeSchema.safeParse(trade);
+      const mainQueue = `orderbook:trades:${market.symbol}`;
+      const processingQueue = `${mainQueue}:processing`;
+      const deadLetterQueue = `${mainQueue}:dead-letter`;
 
-          // if (validation.success) {
-          //   await createTrade(validation.data);
-          // } else {
-          //   console.error("Invalid trade received from Redis:", validation.error);
-          // }
-          // Temporarily adding trade without validation
-          await db.trade.create({
-            data: {
-              market: trade.market,
-              price: trade.price,
-              quantity: trade.quantity,
-              takerSide: trade.taker_side,
-              buyOrderId: trade.buy_order_id,
-              sellOrderId: trade.sell_order_id,
-              buyerId: trade.buyer_id,
-              sellerId: trade.seller_id,
-              fee: trade.fee,
-              feeAsset: trade.fee_asset,
-              timestamp: trade.timestamp,
-            },
-          });
+      console.log(`[TradeWorker] Starting listener on ${mainQueue}`);
+
+      while (true) {
+        let tradeJSON: string | null = null;
+        try {
+          // Reliable Queue Pattern
+          tradeJSON = await client.lMove(mainQueue, processingQueue, "LEFT", "RIGHT");
+
+          if (tradeJSON) {
+            const trade: TradeMessage = JSON.parse(tradeJSON);
+            console.log("[TradeWorker] Processing trade:", trade.id);
+
+            // Call your transactional trade processing function (you'll need to create this service)
+            await processTradeInTransaction(trade);
+
+            // Success! Remove from processing queue
+            await client.lRem(processingQueue, -1, tradeJSON);
+          }
+        } catch (err: any) {
+          console.error(`[TradeWorker] CRITICAL ERROR processing trade: ${err?.message}`);
+          if (tradeJSON) {
+            // Move poisonous message to dead-letter queue
+            await client.lMove(processingQueue, deadLetterQueue, "RIGHT", "LEFT");
+          }
+          await new Promise((resolve) => setTimeout(resolve, 1000));
         }
       }
     }
   } catch (error) {
-    console.error("Error seeding trades to DB:", error);
+    console.error("Error initializing the Trades Worker", error);
   }
 };

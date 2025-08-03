@@ -5,6 +5,7 @@ import cors from "cors";
 import marketRoutes from "./routes/marketRoutes";
 import userRoutes from "./routes/userRoutes";
 import { errorHandler } from "./middleware/errorHandler";
+import { connectToRedis } from "@/services/redisService";
 
 const app: Express = express();
 const PORT = process.env.PORT || 3000;
@@ -16,7 +17,9 @@ app.use(express.json());
 app.get("/health", (req: Request, res: Response) => {
   res.status(200).json({ status: "ok", timestamp: new Date() });
 });
+// connection to the redis Client and also manages the subsscription to the necessary redis queues
 
+connectToRedis();
 // API Routes
 app.use("/api/v1", marketRoutes);
 app.use("/api/v1", userRoutes);

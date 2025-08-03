@@ -25,7 +25,8 @@ pub struct OrderConsumer {
     order_queue_key: String,
     cancel_queue_key: String,
     snapshot_request_queue_key: String,
-    trade_queue_key: String,
+    trade_channel_key: String,
+    processed_trades_queue_key: String,
     processed_orders_queue_key: String,
     ltp_key: String,
     delta_channel_key: String,
@@ -41,7 +42,8 @@ impl OrderConsumer {
         symbol: String,
         order_queue_key: String,
         cancel_queue_key: String,
-        trade_queue_key: String,
+        trade_channel_key: String,
+        processed_trades_queue_key: String,
         processed_orders_queue_key: String,
         ltp_key: String,
         snapshot_key: String, // We'll use this for snapshot requests
@@ -63,7 +65,8 @@ impl OrderConsumer {
             order_queue_key,
             cancel_queue_key,
             snapshot_request_queue_key,
-            trade_queue_key,
+            trade_channel_key,
+            processed_trades_queue_key,
             processed_orders_queue_key,
             ltp_key,
             delta_channel_key,
@@ -85,6 +88,7 @@ impl OrderConsumer {
             }
         }
     }
+
     async fn publish_processed_order(&self, order: &Order) {
         if let Ok(order_json) = serde_json::to_string(order) {
             let mut con = self.redis_client.clone();
@@ -138,14 +142,22 @@ impl OrderConsumer {
 
         let mut con = self.redis_client.clone();
 
-        // Publish trades
-        let mut trade_pipeline = pipe();
+        // This pipeline is for the database queue, ensuring trades are saved.
+        let mut db_queue_pipeline = pipe();
         for trade in &trades {
             if let Ok(trade_json) = serde_json::to_string(trade) {
-                trade_pipeline.lpush(&self.trade_queue_key, trade_json);
+                // Action 1: Publish to the real-time Pub/Sub channel.
+                // This is "fire and forget" for live listeners.
+                let _: Result<(), _> = con.publish(&self.trade_channel_key, &trade_json).await;
+
+                // Action 2: Add the trade to the persistent queue for the DB worker.
+                db_queue_pipeline
+                    .lpush(&self.processed_trades_queue_key, trade_json)
+                    .ignore();
             }
         }
-        let _: Result<(), _> = trade_pipeline.query_async(&mut con).await;
+        // Execute the pipeline to push all trades to the DB queue.
+        let _: Result<(), _> = db_queue_pipeline.query_async(&mut con).await;
 
         // Update LTP
         if let Some(last_trade) = trades.last() {

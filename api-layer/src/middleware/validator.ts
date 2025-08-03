@@ -4,7 +4,7 @@ import type { Request, Response, NextFunction } from "express";
 import { z, ZodError } from "zod";
 
 // Define the schema using Zod, aligned with Prisma schema
-const orderSchema = z
+export const orderSchema = z
   .object({
     symbol: z.string().min(1, "Symbol is required").toUpperCase(),
     userId: z.string().uuidv4({ message: "Invalid Uuid for userId" }),
