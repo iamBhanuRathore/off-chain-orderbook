@@ -1,6 +1,11 @@
 // src/services/tradeService.ts
 import { db } from "../lib/db";
-import { Prisma, Side, OrderStatus, type Trade } from "../generated/prisma/client";
+import {
+  Prisma,
+  Side,
+  OrderStatus,
+  type Trade,
+} from "../generated/prisma/client";
 
 // Message from matching engine
 export type TradeMessage = {
@@ -22,7 +27,9 @@ export type TradeMessage = {
  * @returns The newly created trade record.
  * @throws Error on any failure, ensuring the transaction is rolled back.
  */
-export const processTradeInTransaction = async (trade: TradeMessage): Promise<Trade> => {
+export const processTradeInTransaction = async (
+  trade: TradeMessage,
+): Promise<Trade> => {
   return db.$transaction(async (tx) => {
     const price = new Prisma.Decimal(trade.price);
     const quantity = new Prisma.Decimal(trade.quantity);
@@ -33,8 +40,12 @@ export const processTradeInTransaction = async (trade: TradeMessage): Promise<Tr
     }
 
     // 1. Fetch orders and lock them for update.
-    const makerOrder = await tx.order.findUniqueOrThrow({ where: { id: trade.makerOrderId } });
-    const takerOrder = await tx.order.findUniqueOrThrow({ where: { id: trade.takerOrderId } });
+    const makerOrder = await tx.order.findUniqueOrThrow({
+      where: { id: trade.makerOrderId },
+    });
+    const takerOrder = await tx.order.findUniqueOrThrow({
+      where: { id: trade.takerOrderId },
+    });
 
     // 2. Identify buyer, seller, and market details.
     const buyOrder = makerOrder.side === Side.Buy ? makerOrder : takerOrder;
@@ -42,7 +53,9 @@ export const processTradeInTransaction = async (trade: TradeMessage): Promise<Tr
     const buyerId = buyOrder.userId;
     const sellerId = sellOrder.userId;
 
-    const market = await tx.market.findUniqueOrThrow({ where: { symbol: trade.market } });
+    const market = await tx.market.findUniqueOrThrow({
+      where: { symbol: trade.market },
+    });
     const { baseAsset, quoteAsset } = market;
 
     // 3. Update balances atomically.
@@ -72,7 +85,9 @@ export const processTradeInTransaction = async (trade: TradeMessage): Promise<Tr
 
     if (refund.isNegative()) {
       // This should be prevented by the matching engine logic.
-      throw new Error(`Critical Error: Buyer ${buyerId} would pay ${tradeValue} which is more than their limit price of ${buyOrder.price} for quantity ${quantity}.`);
+      throw new Error(
+        `Critical Error: Buyer ${buyerId} would pay ${tradeValue} which is more than their limit price of ${buyOrder.price} for quantity ${quantity}.`,
+      );
     }
 
     await tx.balance.update({
@@ -87,10 +102,14 @@ export const processTradeInTransaction = async (trade: TradeMessage): Promise<Tr
     for (const order of [makerOrder, takerOrder]) {
       const newRemaining = order.remaining.minus(quantity);
       const newFilled = order.filled.plus(quantity);
-      const newStatus = newRemaining.isZero() ? OrderStatus.Filled : OrderStatus.PartiallyFilled;
+      const newStatus = newRemaining.isZero()
+        ? OrderStatus.Filled
+        : OrderStatus.PartiallyFilled;
 
       if (newRemaining.isNegative()) {
-        throw new Error(`Critical Error: Order ${order.id} would be overfilled.`);
+        throw new Error(
+          `Critical Error: Order ${order.id} would be overfilled.`,
+        );
       }
 
       await tx.order.update({
@@ -122,12 +141,19 @@ export const processTradeInTransaction = async (trade: TradeMessage): Promise<Tr
       },
     });
 
-    console.log(`[TradeService] Processed trade ${newTrade.id} for ${quantity} ${baseAsset} @ ${price} ${quoteAsset}`);
+    console.log(
+      `[TradeService] Processed trade ${newTrade.id} for ${quantity} ${baseAsset} @ ${price} ${quoteAsset}`,
+    );
     return newTrade;
   });
 };
 
-export const createTrade = async (data: Omit<Trade, "id" | "timestamp" | "buyOrder" | "sellOrder" | "buyer" | "seller">): Promise<Trade> => {
+export const createTrade = async (
+  data: Omit<
+    Trade,
+    "id" | "timestamp" | "buyOrder" | "sellOrder" | "buyer" | "seller"
+  >,
+): Promise<Trade> => {
   return db.trade.create({
     data,
   });
