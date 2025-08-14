@@ -4,9 +4,12 @@ import { db } from "@/lib/db";
 import type { RedisClientType } from "redis";
 // import { orderSchema } from "@/schemas/orderSchema";
 // IMPORTANT: Import the new transactional function
-import { createOrderWithBalanceLock } from "@/services/orderService";
+import { cancelOrderAndUnlockFunds, createOrderWithBalanceLock } from "@/services/orderService";
 // We will need to create a transactional trade processor as well
-import { processTradeInTransaction, type TradeMessage } from "@/services/tradeService"; // Assuming this file is created as per previous examples
+import {
+  processTradeInTransaction,
+  type TradeMessage,
+} from "@/services/tradeService"; // Assuming this file is created as per previous examples
 import { orderSchema } from "@/middleware/validator";
 
 /**
@@ -27,7 +30,12 @@ export const processNewOrdersWorker = async (client: RedisClientType) => {
         let orderJSON: string | null = null;
         try {
           // Reliable Queue Pattern: Atomically move message from main to processing queue
-          orderJSON = await client.lMove(mainQueue, processingQueue, "LEFT", "RIGHT");
+          orderJSON = await client.lMove(
+            mainQueue,
+            processingQueue,
+            "LEFT",
+            "RIGHT",
+          );
 
           if (orderJSON) {
             const order = JSON.parse(orderJSON);
@@ -41,15 +49,25 @@ export const processNewOrdersWorker = async (client: RedisClientType) => {
               // If successful, remove the message from the processing queue
               await client.lRem(processingQueue, -1, orderJSON);
             } else {
-              console.error("[OrderWorker] Invalid order schema:", validation.error);
+              console.error(
+                "[OrderWorker] Invalid order schema:",
+                validation.error,
+              );
               throw new Error("Invalid order schema"); // Throw to move to dead-letter
             }
           }
         } catch (err: any) {
-          console.error(`[OrderWorker] CRITICAL ERROR processing order: ${err?.message}`);
+          console.error(
+            `[OrderWorker] CRITICAL ERROR processing order: ${err?.message}`,
+          );
           if (orderJSON) {
             // Move the poisonous message to a dead-letter queue for inspection
-            await client.lMove(processingQueue, deadLetterQueue, "RIGHT", "LEFT");
+            await client.lMove(
+              processingQueue,
+              deadLetterQueue,
+              "RIGHT",
+              "LEFT",
+            );
           }
           // Wait a moment to prevent fast-spinning on a persistent error
           await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -79,7 +97,13 @@ export const processTradesWorker = async (client: RedisClientType) => {
         let tradeJSON: string | null = null;
         try {
           // Reliable Queue Pattern
-          tradeJSON = await client.lMove(mainQueue, processingQueue, "LEFT", "RIGHT");
+          tradeJSON = await client.blMove(
+            mainQueue,
+            processingQueue,
+            "LEFT",
+            "RIGHT",
+            0,
+          );
 
           if (tradeJSON) {
             const trade: TradeMessage = JSON.parse(tradeJSON);
@@ -92,10 +116,17 @@ export const processTradesWorker = async (client: RedisClientType) => {
             await client.lRem(processingQueue, -1, tradeJSON);
           }
         } catch (err: any) {
-          console.error(`[TradeWorker] CRITICAL ERROR processing trade: ${err?.message}`);
+          console.error(
+            `[TradeWorker] CRITICAL ERROR processing trade: ${err?.message}`,
+          );
           if (tradeJSON) {
             // Move poisonous message to dead-letter queue
-            await client.lMove(processingQueue, deadLetterQueue, "RIGHT", "LEFT");
+            await client.lMove(
+              processingQueue,
+              deadLetterQueue,
+              "RIGHT",
+              "LEFT",
+            );
           }
           await new Promise((resolve) => setTimeout(resolve, 1000));
         }
@@ -103,5 +134,61 @@ export const processTradesWorker = async (client: RedisClientType) => {
     }
   } catch (error) {
     console.error("Error initializing the Trades Worker", error);
+  }
+};
+
+/**
+ * Worker to process confirmed order cancellations from the matching engine.
+ * It uses a reliable queue pattern to ensure that funds are unlocked only when a cancellation is confirmed.
+ */
+export const processCancellationsWorker = async (client: RedisClientType) => {
+  try {
+    const markets = await db.market.findMany();
+    for (const market of markets) {
+      const mainQueue = `engine:processed_cancellations:${market.symbol}`;
+      const processingQueue = `${mainQueue}:processing`;
+      const deadLetterQueue = `${mainQueue}:dead-letter`;
+
+      console.log(`[CancellationWorker] Starting listener on ${mainQueue}`);
+
+      while (true) {
+        let cancellationJSON: string | null = null;
+        try {
+          cancellationJSON = await client.blMove(
+            mainQueue,
+            processingQueue,
+            "LEFT",
+            "RIGHT",
+            0,
+          );
+
+          if (cancellationJSON) {
+            const cancellationResult = JSON.parse(cancellationJSON);
+            console.log("[CancellationWorker] Processing cancellation:", cancellationResult);
+
+            if (cancellationResult.status === "SUCCESS") {
+              await cancelOrderAndUnlockFunds(cancellationResult.orderId);
+            }
+
+            await client.lRem(processingQueue, -1, cancellationJSON);
+          }
+        } catch (err: any) {
+          console.error(
+            `[CancellationWorker] CRITICAL ERROR processing cancellation: ${err?.message}`,
+          );
+          if (cancellationJSON) {
+            await client.lMove(
+              processingQueue,
+              deadLetterQueue,
+              "RIGHT",
+              "LEFT",
+            );
+          }
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error initializing the Cancellations Worker", error);
   }
 };

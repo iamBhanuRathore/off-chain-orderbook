@@ -11,9 +11,14 @@ import type { OrderSchema } from "@/types"; // Make sure this path is correct
  * lock user funds and is not atomic.
  * Use createOrderWithBalanceLock instead.
  */
-export const unsafeCreateOrder = async (data: OrderSchema, market: string): Promise<Order> => {
+export const unsafeCreateOrder = async (
+  data: OrderSchema,
+  market: string,
+): Promise<Order> => {
   // This function is left here to show the "before" state. Do not use it in production.
-  throw new Error("This function is deprecated. Use createOrderWithBalanceLock.");
+  throw new Error(
+    "This function is deprecated. Use createOrderWithBalanceLock.",
+  );
 };
 
 /**
@@ -25,18 +30,33 @@ export const unsafeCreateOrder = async (data: OrderSchema, market: string): Prom
  * @returns The newly created order.
  * @throws Error if the user has insufficient funds, market doesn't exist, or for other db errors.
  */
-export const createOrderWithBalanceLock = async (data: OrderPayload, marketSymbol: string): Promise<Order> => {
+export const createOrderWithBalanceLock = async (
+  data: OrderPayload,
+  marketSymbol: string,
+): Promise<Order> => {
   return db.$transaction(async (tx) => {
     // Step 1: Get market info to determine which asset to lock
-    const market = await tx.market.findUniqueOrThrow({ where: { symbol: marketSymbol } });
-
+    const market = await tx.market.findUniqueOrThrow({
+      where: { symbol: marketSymbol },
+    });
     const price = new Prisma.Decimal(data.price || 0);
     const quantity = new Prisma.Decimal(data.quantity);
 
-    const assetToLock = data.side === Side.Buy ? market.quoteAsset : market.baseAsset;
-    const amountToLock = data.side === Side.Buy ? price.times(quantity) : quantity;
+    const assetToLock =
+      data.side === Side.Buy ? market.quoteAsset : market.baseAsset;
+    const amountToLock =
+      data.side === Side.Buy ? price.times(quantity) : quantity;
     const amountToLockBigInt = BigInt(amountToLock.toFixed(0)); // Use BigInt for balance model
 
+    // console.log({
+    //   market,
+    //   data,
+    //   amountToLockBigInt,
+    //   amountToLock,
+    //   assetToLock,
+    //   price,
+    //   quantity,
+    // });
     if (amountToLockBigInt <= 0) {
       throw new Error("Order amount must be positive.");
     }
@@ -47,7 +67,9 @@ export const createOrderWithBalanceLock = async (data: OrderPayload, marketSymbo
     });
 
     if (balance.amount < amountToLockBigInt) {
-      throw new Error(`Insufficient funds. User has ${balance.amount}, but needs ${amountToLockBigInt} of ${assetToLock}.`);
+      throw new Error(
+        `Insufficient funds. User has ${balance.amount}, but needs ${amountToLockBigInt} of ${assetToLock}.`,
+      );
     }
 
     await tx.balance.update({
@@ -74,7 +96,9 @@ export const createOrderWithBalanceLock = async (data: OrderPayload, marketSymbo
       },
     });
 
-    console.log(`[OrderService] Created order ${newOrder.id} and locked ${amountToLockBigInt} ${assetToLock}`);
+    console.log(
+      `[OrderService] Created order ${newOrder.id} and locked ${amountToLockBigInt} ${assetToLock}`,
+    );
     return newOrder;
   });
 };
@@ -83,13 +107,19 @@ export const getOrderById = async (id: string): Promise<Order | null> => {
   return db.order.findUnique({ where: { id } });
 };
 
-export const getOrdersByUserId = async (userId: string): Promise<Order[]> => {
+export const getOrdersByUserId = async (
+  userId: string,
+  status?: OrderStatus,
+): Promise<Order[]> => {
+  const where: Prisma.OrderWhereInput = { userId };
+  if (status) {
+    where.status = status;
+  }
   return db.order.findMany({
-    where: { userId },
+    where,
     orderBy: { createdAt: "desc" },
   });
 };
-
 /**
  * Cancels an order and atomically unlocks the remaining user funds.
  * This is the safe and correct way to cancel an order.
@@ -103,15 +133,24 @@ export const cancelOrderAndUnlockFunds = async (id: string): Promise<Order> => {
     // Step 1: Find the order to be canceled
     const order = await tx.order.findUniqueOrThrow({ where: { id } });
 
-    if (order.status !== OrderStatus.Open && order.status !== OrderStatus.PartiallyFilled) {
+    if (
+      order.status !== OrderStatus.Open &&
+      order.status !== OrderStatus.PartiallyFilled
+    ) {
       throw new Error(`Cannot cancel order in status: ${order.status}`);
     }
 
     // Step 2: Determine which asset and how much to unlock
-    const market = await tx.market.findUniqueOrThrow({ where: { symbol: order.market } });
+    const market = await tx.market.findUniqueOrThrow({
+      where: { symbol: order.market },
+    });
 
-    const assetToUnlock = order.side === Side.Buy ? market.quoteAsset : market.baseAsset;
-    const amountToUnlock = order.side === Side.Buy ? order.price.times(order.remaining) : order.remaining;
+    const assetToUnlock =
+      order.side === Side.Buy ? market.quoteAsset : market.baseAsset;
+    const amountToUnlock =
+      order.side === Side.Buy
+        ? order.price.times(order.remaining)
+        : order.remaining;
     const amountToUnlockBigInt = BigInt(amountToUnlock.toFixed(0));
 
     // Step 3: Atomically unlock the funds
@@ -136,7 +175,9 @@ export const cancelOrderAndUnlockFunds = async (id: string): Promise<Order> => {
       data: { status: OrderStatus.Canceled, canceledAt: new Date() },
     });
 
-    console.log(`[OrderService] Canceled order ${canceledOrder.id} and unlocked ${amountToUnlockBigInt} ${assetToUnlock}`);
+    console.log(
+      `[OrderService] Canceled order ${canceledOrder.id} and unlocked ${amountToUnlockBigInt} ${assetToUnlock}`,
+    );
     return canceledOrder;
   });
 };

@@ -10,7 +10,9 @@ export const orderSchema = z
     userId: z.string().uuidv4({ message: "Invalid Uuid for userId" }),
     orderType: z.enum(["Market", "Limit", "StopLimit", "StopMarket"]),
     side: z.enum(["Buy", "Sell"]),
-    quantity: z.string().regex(/^[0-9]+(\.[0-9]+)?$/, "Quantity must be a valid number string"),
+    quantity: z
+      .string()
+      .regex(/^[0-9]+(\.[0-9]+)?$/, "Quantity must be a valid number string"),
     price: z
       .string()
       .regex(/^[0-9]+(\.[0-9]+)?$/, "Price must be a valid number string")
@@ -23,24 +25,36 @@ export const orderSchema = z
     clientOrderId: z.string().optional(),
   })
   .superRefine((data, ctx) => {
-    if (data.orderType === "Limit" && (!data.price || parseFloat(data.price) <= 0)) {
+    if (
+      data.orderType === "Limit" &&
+      (!data.price || parseFloat(data.price) <= 0)
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "A price is required for Limit orders and must be greater than 0",
+        message:
+          "A price is required for Limit orders and must be greater than 0",
         path: ["price"],
       });
     }
-    if ((data.orderType === "StopLimit" || data.orderType === "StopMarket") && (!data.stopPrice || parseFloat(data.stopPrice) <= 0)) {
+    if (
+      (data.orderType === "StopLimit" || data.orderType === "StopMarket") &&
+      (!data.stopPrice || parseFloat(data.stopPrice) <= 0)
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "A stopPrice is required for Stop orders and must be greater than 0",
+        message:
+          "A stopPrice is required for Stop orders and must be greater than 0",
         path: ["stopPrice"],
       });
     }
-    if (data.orderType === "StopLimit" && (!data.price || parseFloat(data.price) <= 0)) {
+    if (
+      data.orderType === "StopLimit" &&
+      (!data.price || parseFloat(data.price) <= 0)
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "A price is required for StopLimit orders and must be greater than 0",
+        message:
+          "A price is required for StopLimit orders and must be greater than 0",
         path: ["price"],
       });
     }
@@ -49,7 +63,11 @@ export const orderSchema = z
 // Infer the TypeScript type from the Zod schema
 export type OrderPayload = z.infer<typeof orderSchema>;
 
-export const validateOrder = (req: Request, res: Response, next: NextFunction): void => {
+export const validateOrder = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void => {
   try {
     const validatedData = orderSchema.parse(req.body);
     req.body = validatedData;

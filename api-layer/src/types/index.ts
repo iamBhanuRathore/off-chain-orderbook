@@ -23,10 +23,16 @@ export interface Trade {
   timestamp: string;
 }
 
+// Define a type for the user object
+interface AppUser {
+  id: string | number;
+  type?: string;
+}
+
 declare global {
   namespace Express {
     interface Request {
-      userId?: string;
+      user?: AppUser;
     }
   }
 }

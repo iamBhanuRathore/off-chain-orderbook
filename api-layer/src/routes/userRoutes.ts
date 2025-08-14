@@ -6,8 +6,6 @@ import { authenticateUser } from "@/middleware/authMiddleware";
 
 const router = Router();
 
-router.post("/myOrders", authenticateUser, userController.orderHistory);
-router.delete("/myBalances", userController.myBalances);
-router.get("/orderHistory", userController.openOrders);
+router.get("/orders", authenticateUser, userController.getOrders);
 
 export default router;

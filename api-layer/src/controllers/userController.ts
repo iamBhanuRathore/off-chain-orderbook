@@ -1,45 +1,19 @@
-import { db } from "@/lib/db";
+import { getOrdersByUserId } from "@/services/orderService";
 import type { Request, Response, NextFunction } from "express";
+import { OrderStatus } from "@/generated/prisma";
 
-export const orderHistory = async (req: Request, res: Response, next: NextFunction) => {
+export const getOrders = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
-    const orders = await db.order.findMany({
-      where: {
-        userId: req.userId,
-        status: {
-          notIn: ["Open", "PartiallyFilled"],
-        },
-      },
-    });
+    const { status } = req.query;
+    const orders = await getOrdersByUserId(
+      String(req.user?.id),
+      status as OrderStatus,
+    );
     res.status(200).json({ orders });
-  } catch (error) {
-    next(error);
-  }
-};
-export const openOrders = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const openOrders = await db.order.findMany({
-      where: {
-        userId: req.userId,
-        status: {
-          in: ["Open", "PartiallyFilled"],
-        },
-      },
-    });
-    res.status(200).json({ openOrders });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const myBalances = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const balances = await db.balance.findMany({
-      where: {
-        userId: req.userId,
-      },
-    });
-    res.status(200).json({ balances });
   } catch (error) {
     next(error);
   }
