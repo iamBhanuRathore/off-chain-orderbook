@@ -21,8 +21,8 @@ app.get("/health", (req: Request, res: Response) => {
 });
 
 // API Routes
-app.use("/api/v1", marketRoutes);
-app.use("/api/v1", userRoutes);
+app.use("/api/v1/market", marketRoutes);
+app.use("/api/v1/users", userRoutes);
 
 // 404 Handler for undefined routes
 app.use((req: Request, res: Response) => {
