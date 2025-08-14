@@ -1,15 +1,14 @@
-import { OrderType } from "@/generated/prisma";
-import { Side } from "@/generated/prisma";
 import { z } from "zod";
+import { OrderType, Side } from "@/generated/prisma";
 
 export const orderSchema = z.object({
-  id: z.string(),
-  user_id: z.string(),
-  order_type: z.enum(OrderType),
-  side: z.enum(Side),
+  userId: z.string().uuid(),
+  orderType: z.nativeEnum(OrderType),
+  side: z.nativeEnum(Side),
   price: z.string(),
   quantity: z.string(),
-  timestamp: z.string(),
+  symbol: z.string(),
+  clientOrderId: z.string().optional(),
 });
 
 //  {

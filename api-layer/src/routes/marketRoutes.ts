@@ -1,8 +1,8 @@
 import { Router } from "express";
 import * as marketController from "../controllers/marketController";
 import { validateOrder } from "../middleware/validator";
-import { requestLimiters } from "@/middleware/rate-limiter";
-import { authenticateUser } from "@/middleware/authMiddleware";
+import { requestLimiters } from "../middleware/rate-limiter";
+import { authenticateUser } from "../middleware/authMiddleware";
 
 const router = Router();
 
