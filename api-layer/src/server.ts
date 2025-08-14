@@ -7,6 +7,7 @@ import marketRoutes from "./routes/marketRoutes";
 import userRoutes from "./routes/userRoutes";
 import { errorHandler } from "./middleware/errorHandler";
 import { redisManager } from "./services/redis";
+import { dbWorker } from "./workers/dbWorker";
 
 const app: Express = express();
 const PORT = process.env.PORT || 3000;
@@ -40,6 +41,8 @@ const startServer = async () => {
     server.listen(PORT, () => {
       console.log(`✅ API Server is running on http://localhost:${PORT}`);
       console.log("Ensure the Rust Matching Engine is running.");
+      // Start the DB worker in the background
+      dbWorker.start();
     });
   } catch (error) {
     console.error("Failed to start server:", error);

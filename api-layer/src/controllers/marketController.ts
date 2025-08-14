@@ -8,18 +8,25 @@ const asyncHandler = (fn: Function) => (req: Request, res: Response, next: NextF
   Promise.resolve(fn(req, res, next)).catch(next);
 };
 
-export const createOrder = asyncHandler(async (req: Request<{}, {}, OrderPayload>, res: Response) => {
-  const orderPayload = req.body;
-  const validation = orderSchema.safeParse(orderPayload);
-  if (!validation.success) {
-    return res.status(400).json({
-      error: "Validation failed",
-      details: z.treeifyError(validation.error),
-    });
-  }
-  const result = await redisService.submitOrder(req.body);
-  res.status(202).json({ message: "Order submitted for processing", ...result });
-});
+export const createOrder = asyncHandler(
+  async (req: Request, res: Response) => {
+    const orderPayload = req.body;
+    const validation = orderSchema.safeParse(orderPayload);
+
+    if (!validation.success) {
+      return res.status(400).json({
+        error: "Validation failed",
+        details: validation.error.flatten(),
+      });
+    }
+
+    const result = await redisService.submitOrder(
+      validation.data,
+      validation.data.symbol,
+    );
+    res.status(202).json(result);
+  },
+);
 
 export const deleteOrder = asyncHandler(async (req: Request<{ symbol: string; orderId: string }>, res: Response) => {
   const { symbol, orderId } = req.params;

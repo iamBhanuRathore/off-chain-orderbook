@@ -2,37 +2,52 @@ import * as keys from "../constants";
 import type { OrderPayload } from "../middleware/validator";
 import type { OrderBookLevel, Trade } from "../types";
 import { db } from "../lib/db";
-import { createOrderWithBalanceLock } from "./orderService";
 import { getTradesByMarket } from "./tradeService";
 import { getMarketBySymbol } from "./marketService";
 import { Prisma } from "@/generated/prisma";
 import { redisManager } from "./redis";
-const redisClient = redisManager.getClient();
-export const submitOrder = async (orderData: OrderPayload) => {
-  const createdOrder = await createOrderWithBalanceLock(
-    orderData,
-    orderData.symbol,
-  );
+import { v4 as uuidv4 } from "uuid";
 
-  const queueName = keys.getOrderQueue(orderData.symbol);
-  console.log(createdOrder, queueName);
+const redisClient = redisManager.getClient();
+
+export const submitOrder = async (orderData: OrderPayload, symbol: string) => {
+  const orderId = uuidv4();
+  const queueName = keys.getOrderQueue(symbol);
+
   const command = {
     command: "NewOrder",
     payload: {
-      id: createdOrder.id,
-      user_id: createdOrder.userId,
-      order_type: createdOrder.orderType,
-      side: createdOrder.side,
-      price: createdOrder.price.toString(),
-      quantity: createdOrder.quantity.toString(),
+      id: orderId,
+      user_id: orderData.userId,
+      order_type: orderData.orderType,
+      side: orderData.side,
+      price: orderData.price,
+      quantity: orderData.quantity,
+      timestamp: new Date().toISOString(),
     },
   };
+
   await redisClient.lPush(queueName, JSON.stringify(command));
-  console.log("Till here");
-  return command;
+
+  return {
+    message: "Order submitted for processing",
+    orderId,
+    ...command,
+  };
 };
 
+import * as orderService from "./orderService";
+
 export const cancelOrder = async (symbol: string, orderId: string) => {
+  // TODO: This is an optimistic cancellation. A race condition exists where the
+  // order might be filled by the matching engine *after* the API user requests
+  // cancellation but *before* the engine processes the cancellation message.
+  // The correct, robust solution is for the matching engine to be the source
+  // of truth and emit an "OrderCanceled" event that a DB worker can process.
+  // This implementation is a temporary measure to make the feature work from
+  // the user's perspective until the matching engine is updated.
+  const canceledOrder = await orderService.cancelOrderAndUnlockFunds(orderId);
+
   const command = {
     command: "CancelOrder",
     payload: { order_id: orderId },
@@ -41,7 +56,7 @@ export const cancelOrder = async (symbol: string, orderId: string) => {
   const queueName = keys.getCancelQueue(symbol);
   await redisClient.lPush(queueName, JSON.stringify(command));
 
-  return { message: "Cancellation request submitted" };
+  return { message: "Cancellation request submitted", order: canceledOrder };
 };
 
 export const getOrderBook = async (
