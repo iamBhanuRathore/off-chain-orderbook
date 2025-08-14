@@ -5,11 +5,7 @@ import { requestLimiters } from "@/middleware/rate-limiter";
 
 const router = Router();
 
-router.post(
-  "/",
-  requestLimiters.sensitive,
-  userController.createUser,
-);
+router.post("/", requestLimiters.sensitive, userController.createUser);
 
 router.get(
   "/:id",

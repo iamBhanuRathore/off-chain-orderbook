@@ -4,6 +4,7 @@ import type { Request, Response, NextFunction } from "express";
 import { OrderStatus } from "@/generated/prisma";
 import { createUserSchema } from "@/schemas/userSchema";
 import bcrypt from "bcrypt";
+import { resourceUsage } from "process";
 
 export const getOrders = async (
   req: Request,
@@ -49,7 +50,8 @@ export const getUser = async (
     const { id } = req.params;
     const user = await userService.getUserById(id as string);
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      res.status(404).json({ message: "User not found" });
+      return;
     }
     res.status(200).json({ user });
   } catch (error) {
